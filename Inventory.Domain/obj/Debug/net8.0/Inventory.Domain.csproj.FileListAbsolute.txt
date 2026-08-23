@@ -1,0 +1,11 @@
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\bin\Debug\net8.0\Inventory.Domain.deps.json
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\bin\Debug\net8.0\Inventory.Domain.dll
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\bin\Debug\net8.0\Inventory.Domain.pdb
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.AssemblyInfoInputs.cache
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.AssemblyInfo.cs
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.csproj.CoreCompileInputs.cache
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.dll
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\refint\Inventory.Domain.dll
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\Inventory.Domain.pdb
+C:\Users\Admin\source\repos2\New folder\InventoryManagement\Inventory.Domain\obj\Debug\net8.0\ref\Inventory.Domain.dll
