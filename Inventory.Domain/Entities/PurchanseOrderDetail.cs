@@ -11,27 +11,17 @@ namespace Inventory.Domain.Entities
         public Guid Id { get; set; }
         public Guid PurchanseOrderId { get; set; }
         public Guid ProductId { get; set; }
-        /// <summary>
-        /// Số lượng đã đặt
-        /// </summary>
-        public int OrderedQuantity { get; set; }
-        /// <summary>
-        /// Số lượng thực tế nhận
-        /// </summary>
-        public int ActualReceivedQuantity { get; set; }
-        public string Type { get; set; }
-        /// <summary>
-        /// số lô này có thể mở rộng sau
-        /// </summary>
-        //public string LotNumber { get; set; }
 
-        //ngày nhận
+        public int OrderedQuantity { get; set; }
+        public int ActualReceivedQuantity { get; set; }
+        public string Type { get; set; } = string.Empty;
+
         public DateTime ReceiveTime { get; set; }
-        /// <summary>
-        /// phiếu tồn khi nhập hàng
-        /// </summary>
-        public string InventoryId { get; set; }
+        public string InventoryId { get; set; } = string.Empty;
         public decimal UnitPrice { get; set; }
-        public string Note { get; set; }
+        public string Note { get; set; } = string.Empty;
+
+        public virtual PurchanseOrder PurchanseOrder { get; set; } = null!;
+        public virtual Product Product { get; set; } = null!;
     }
 }

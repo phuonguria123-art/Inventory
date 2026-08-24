@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Inventory.Application.Interfaces;
 using Inventory.Application.Users.DTOs;
-using Inventory.Domain.Entitys;
+using Inventory.Domain.Entities;
 using Inventory.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
@@ -49,7 +49,7 @@ namespace Inventory.Application.Users.Services
             if (await userRepository.GetUserByUsername(request.Username))
                 return null;
 
-            var user = new User();
+            var user = new User { PasswordHash = string.Empty };
             var hashedPassword = new PasswordHasher<User>()
                 .HashPassword(user, request.Password);
             user.Username = request.Username;

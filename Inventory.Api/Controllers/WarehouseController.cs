@@ -1,6 +1,4 @@
-﻿using Inventory.Application.Products.DTOs;
-using Inventory.Application.Products.Services;
-using Inventory.Application.Users.DTOs;
+﻿
 using Inventory.Application.Warehouses;
 using Inventory.Application.Warehouses.DTOs;
 using Microsoft.AspNetCore.Http;
@@ -13,31 +11,46 @@ namespace Inventory.Api.Controllers
     public class WarehouseController : ControllerBase
     {
         private readonly IWarehouseService _warehouseService;
+
         public WarehouseController(IWarehouseService warehouseService)
         {
             _warehouseService = warehouseService;
         }
+
         [HttpGet]
-        public async Task<ActionResult> GetAll() => Ok(await _warehouseService.GetAllAsync());
-        [HttpGet("id")]
-        public async Task<IActionResult> getById(Guid id) => Ok(await _warehouseService.GetByIdAsync(id));
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _warehouseService.GetAllAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _warehouseService.GetByIdAsync(id);
+            return Ok(result);
+        }
+
         [HttpPost]
-        public async Task<IActionResult> Create(CreateWarehouseDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateWarehouseDto dto)
         {
-            await _warehouseService.AddAsync(dto);
-            return Ok();
+            await _warehouseService.CreateAsync(dto);
+            return StatusCode(StatusCodes.Status201Created);
         }
-        [HttpPut]
-        public async Task<IActionResult> Update(UpdateWarehouseDto dto)
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseDto dto)
         {
+            dto.Id = id;
             await _warehouseService.UpdateAsync(dto);
-            return Ok();
+            return NoContent();
         }
-        [HttpDelete]
+
+        [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
             await _warehouseService.DeleteAsync(id);
-            return Ok();
+            return NoContent();
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Inventory.Application.Warehouses
 {
     public interface IWarehouseService
     {
-        Task AddAsync(CreateWarehouseDto product);
+        Task CreateAsync(CreateWarehouseDto product);
         Task DeleteAsync(Guid id);
         Task<List<WarehouseDto>> GetAllAsync();
         Task<WarehouseDto> GetByIdAsync(Guid id);

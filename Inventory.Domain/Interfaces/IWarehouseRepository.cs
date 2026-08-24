@@ -9,11 +9,12 @@ namespace Inventory.Domain.Interfaces
 {
     public interface IWarehouseRepository
     {
-        Task<Warehouse> GetAsync(Guid id);
+        Task<Warehouse?> GetAsync(Guid id);
         Task<List<Warehouse>> GetAllAsync();
         Task CreateAysnc(Warehouse warehouse);
         Task UpdateAsync(Warehouse warehouse);
         Task DeleteAsync(Warehouse warehouse);
-        Task<bool> ExistsAsync(Guid id);
+        Task<bool> ExistsByIdAsync(Guid id);
+        Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null);
     }
 }

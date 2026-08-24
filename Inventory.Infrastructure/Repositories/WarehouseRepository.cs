@@ -14,8 +14,8 @@ namespace Inventory.Infrastructure.Repositories
     {
         public async Task CreateAysnc(Warehouse warehouse)
         {
-           await _context.Warehouses.AddAsync(warehouse);
-           await _context.SaveChangesAsync();
+            await _context.Warehouses.AddAsync(warehouse);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(Warehouse warehouse)
@@ -24,23 +24,29 @@ namespace Inventory.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<bool> ExistsAsync(Guid id)
+        public async Task<bool> ExistsByIdAsync(Guid id)
         {
-           return await _context.Warehouses.AnyAsync(x => x.Id == id);
+            return await _context.Warehouses.AnyAsync(x => x.Id == id);
+        }
+
+        public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null)
+        {
+            return await _context.Warehouses.AnyAsync(x => x.Code == code && (!excludeId.HasValue || x.Id != excludeId.Value));
         }
 
         public async Task<Warehouse?> GetAsync(Guid id)
         {
-           return await _context.Warehouses.FindAsync(id);
+            return await _context.Warehouses.FindAsync(id);
         }
 
         public async Task<List<Warehouse>> GetAllAsync()
         {
-            return await _context.Warehouses.ToListAsync();        }
+            return await _context.Warehouses.ToListAsync();
+        }
 
         public async Task UpdateAsync(Warehouse warehouse)
         {
-           _context.Warehouses.Update(warehouse);
+            _context.Warehouses.Update(warehouse);
             await _context.SaveChangesAsync();
         }
     }

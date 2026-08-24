@@ -1,5 +1,5 @@
 ﻿using Inventory.Application.Users.DTOs;
-using Inventory.Domain.Entitys;
+using Inventory.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,4 +1,4 @@
-﻿using Inventory.Domain.Entitys;
+﻿using Inventory.Domain.Entities;
 using Inventory.Domain.Interfaces;
 using Inventory.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;

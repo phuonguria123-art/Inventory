@@ -8,6 +8,7 @@ namespace Inventory.Application.Products.DTOs
 {
     public class ProductDto
     {
+        public Guid Id { get; set; }
         public required string Name { get; set; }
         public required string Code { get; set; }
         public string? ImgUrl { get; set; }

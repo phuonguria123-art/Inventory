@@ -8,7 +8,7 @@ namespace Inventory.Application.PurrchanseOrderDetail.Dto
 {
     public class PurchanseOrderDetailDto
     {
-        public string PurchanseOrderId { get; set; }
+        public string PurchanseOrderId { get; set; } = string.Empty;
         public Guid ProductId { get; set; }
         /// <summary>
         /// Số lượng đã đặt

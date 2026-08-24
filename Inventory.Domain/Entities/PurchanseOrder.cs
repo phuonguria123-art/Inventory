@@ -11,7 +11,7 @@ namespace Inventory.Domain.Entities
     {
         public Guid Id { get; set; }
         public required string Code { get; set; }
-        public required Guid SupplierId { set; get; }
+        public required Guid SupplierId { get; set; }
         //ngày tạo đơn 
         public DateTime CreateDate { get; set; }
         //ngày gửi đơn tới Ncc 
@@ -38,8 +38,9 @@ namespace Inventory.Domain.Entities
         /// tổng cuối(sau khi đã cộng các phí phụ)
         /// </summary>
         public decimal? TotalPrice { get; set; }
-        public string? TotalWeight { get; set; }
+        public decimal? TotalWeight { get; set; }
         public string? Type { get; set; }
+
         public virtual ICollection<PurchanseOrderDetail> OrderDetails { get; set; } = new List<PurchanseOrderDetail>();
     }
 }

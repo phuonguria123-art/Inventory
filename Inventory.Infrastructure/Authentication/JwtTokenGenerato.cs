@@ -1,5 +1,5 @@
 ﻿using Inventory.Application.Interfaces;
-using Inventory.Domain.Entitys;
+using Inventory.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;

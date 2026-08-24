@@ -1,6 +1,6 @@
 ﻿using Inventory.Application.Users.DTOs;
 using Inventory.Application.Users.Services;
-using Inventory.Domain.Entitys;
+using Inventory.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -17,7 +17,7 @@ namespace Inventory.Api.Controllers
     public class AuthController(
         IAuthService authService) : ControllerBase
     {
-        public static User user = new();
+        public static User user = new() { PasswordHash = string.Empty, Username = string.Empty };
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register(UserDto request)
         {

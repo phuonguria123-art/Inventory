@@ -19,6 +19,7 @@ namespace Inventory.Application.PurchaseOrders.Dto
         /// </summary>
         public required Guid WarehouseId { get; set; }
         public decimal? Freight { get; set; }
+        public string? Type { get; set; }
         /// <summary>
         /// tổng cuối(sau khi đã cộng các phí phụ)
         /// </summary>

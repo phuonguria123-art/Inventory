@@ -1,8 +1,5 @@
 ﻿using Inventory.Application.Suppliers;
 using Inventory.Application.Suppliers.Dto;
-using Inventory.Application.Warehouses;
-using Inventory.Application.Warehouses.DTOs;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Controllers
@@ -12,32 +9,46 @@ namespace Inventory.Api.Controllers
     public class SupplierController : ControllerBase
     {
         private readonly ISupplierService _supplierService;
+
         public SupplierController(ISupplierService supplierService)
         {
             _supplierService = supplierService;
         }
+
         [HttpGet]
-        public async Task<ActionResult> GetAll() => Ok(await _supplierService.GetAllAsync());
-        [HttpGet("id")]
-        public async Task<IActionResult> getById(Guid id) => Ok(await _supplierService.GetByIdAsync(id));
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await _supplierService.GetAllAsync();
+            return Ok(result);
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _supplierService.GetByIdAsync(id);
+            return Ok(result);
+        }
+
         [HttpPost]
-        public async Task<IActionResult> Create(CreateSupplierDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateSupplierDto dto)
         {
-            await _supplierService.AddAsync(dto);
-            return Ok();
+            await _supplierService.CreateAsync(dto);
+            return StatusCode(StatusCodes.Status201Created);
         }
-        [HttpPut]
-        public async Task<IActionResult> Update(UpdateSupplierDto dto)
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSupplierDto dto)
         {
+            dto.Id = id;
             await _supplierService.UpdateAsync(dto);
-            return Ok();
+            return NoContent();
         }
-        [HttpDelete]
+
+        [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
             await _supplierService.DeleteAsync(id);
-            return Ok();
+            return NoContent();
         }
-
     }
 }

@@ -10,7 +10,7 @@ namespace Inventory.Application.Suppliers
 {
     public interface ISupplierService
     {
-        Task AddAsync(CreateSupplierDto product);
+        Task CreateAsync(CreateSupplierDto product);
         Task DeleteAsync(Guid id);
         Task<List<SupplierDto>> GetAllAsync();
         Task<SupplierDto> GetByIdAsync(Guid id);

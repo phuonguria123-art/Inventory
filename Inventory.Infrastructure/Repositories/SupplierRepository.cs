@@ -17,34 +17,43 @@ namespace Inventory.Infrastructure.Repositories
         {
             _context = context;
         }
-        // Vì FindAsync() có thể không tìm thấy → trả về null nên cho Supplier trả về có thể null
+
         public async Task<Supplier?> GetAsync(Guid id)
         {
             return await _context.Suppliers.FindAsync(id);
         }
+
         public async Task<List<Supplier>> GetAllAsycn()
         {
             return await _context.Suppliers.ToListAsync();
         }
+
         public async Task CreateAsync(Supplier supplier)
         {
             _context.Suppliers.Add(supplier);
             await _context.SaveChangesAsync();
         }
+
         public async Task UpdateAsync(Supplier supplier)
         {
             _context.Suppliers.Update(supplier);
             await _context.SaveChangesAsync();
         }
+
         public async Task DeleteAsync(Supplier supplier)
         {
             _context.Suppliers.Remove(supplier);
             await _context.SaveChangesAsync();
         }
-        public Task<bool> ExistsAsync(Guid supplierId)
+
+        public async Task<bool> ExistsByIdAsync(Guid id)
         {
-            return _context.Suppliers
-        .AnyAsync(x => x.Id == supplierId);
+            return await _context.Suppliers.AnyAsync(x => x.Id == id);
+        }
+
+        public async Task<bool> ExistsByCodeAsync(string supplierCode, Guid? excludeId = null)
+        {
+            return await _context.Suppliers.AnyAsync(x => x.Code == supplierCode && (!excludeId.HasValue || x.Id != excludeId.Value));
         }
     }
 }

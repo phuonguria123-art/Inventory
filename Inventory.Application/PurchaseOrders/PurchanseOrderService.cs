@@ -1,9 +1,8 @@
 ﻿using AutoMapper;
 using Inventory.Application.PurchaseOrders.Dto;
+using Inventory.Application.PurrchanseOrderDetail.Dto;
 using Inventory.Domain.Entities;
-using Inventory.Domain.Entity;
 using Inventory.Domain.Enums;
-using Inventory.Domain.Interface;
 using Inventory.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -26,12 +25,12 @@ namespace Inventory.Application.PurchaseOrders
         public async Task<PurchanseOrder> Create(CreatePurchaseOrderDto purchanseOrder)
         {
             //validate supplier,warehouse,product 
-            if (!await _warehouseRepository.ExistsAsync(purchanseOrder.WarehouseId))
+            if (!await _warehouseRepository.ExistsByIdAsync(purchanseOrder.WarehouseId))
                 throw new Exception("Warehouse không tồn tại");
 
-            if (!await _supplierRepository.ExistsAsync(purchanseOrder.WarehouseId))
+            if (!await _supplierRepository.ExistsByIdAsync(purchanseOrder.SupplierId))
                 throw new Exception("Supplier không tồn tại");
-            if (purchanseOrder.Products.Count == 0)
+            if (purchanseOrder.Products == null || purchanseOrder.Products.Count == 0)
             {
                 throw new Exception("Đơn hành phải có ít nhất 1 sp ");
             }
@@ -78,41 +77,47 @@ namespace Inventory.Application.PurchaseOrders
             return order;
 
         }
+
+        // map to DB object
         protected PurchanseOrder MapToPurchanse(CreatePurchaseOrderDto createPurchase)
         {
-            Guid id = Guid.NewGuid();
+            var id = Guid.NewGuid();
+            decimal? totalWeight = null;
+            if (!string.IsNullOrWhiteSpace(createPurchase.TotalWeight)
+                && decimal.TryParse(createPurchase.TotalWeight, out var parsedWeight))
+            {
+                totalWeight = parsedWeight;
+            }
+
             var order = new PurchanseOrder()
             {
                 Id = id,
-                Code = "P" + counter++,
+                Code = $"PO-{DateTime.UtcNow:yyyyMMddHHmmss}-{++counter}",
                 SupplierId = createPurchase.SupplierId,
                 CreateDate = DateTime.UtcNow,
                 ExpectedReceiveDate = createPurchase.ExpectedReceiveDate,
                 ReceivingWarehouseId = createPurchase.WarehouseId,
-                Freight = createPurchase.Freight,
                 Status = PurchaseOrderStatus.Draft,
-                TotalWeight = createPurchase.TotalWeight,
-
+                Type = createPurchase.Type,
+                TotalWeight = totalWeight,
             };
-            decimal orderTotal = 0;
-            if (createPurchase.Products?.Count <= 0)
-            {
-                return null;
-            }
-            foreach (var item in createPurchase.Products)
+
+            foreach (var x in createPurchase.Products ?? new List<PurchanseOrderDetailDto>())
             {
                 order.OrderDetails.Add(new PurchanseOrderDetail()
                 {
-                    PurchanseOrderId = id,
-                    ProductId = item.ProductId,
-                    UnitPrice = item.UnitPrice,
                     Id = Guid.NewGuid(),
-                    OrderedQuantity = item.OrderedQuantity,
-
+                    PurchanseOrderId = id,
+                    ProductId = x.ProductId,
+                    OrderedQuantity = x.OrderedQuantity,
+                    UnitPrice = x.UnitPrice,
+                    Type = "OrderItem",
+                    ReceiveTime = DateTime.UtcNow,
+                    InventoryId = Guid.NewGuid().ToString(),
+                    Note = x.Note ?? string.Empty
                 });
-                orderTotal += (item.OrderedQuantity * item.UnitPrice);
             }
-            order.TotalPrice = orderTotal;
+
             return order;
         }
     }

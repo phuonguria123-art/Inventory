@@ -17,6 +17,7 @@ namespace Inventory.Domain.Interfaces
 
         Task UpdateAsync(Supplier supplier);
         Task DeleteAsync(Supplier supplier);
-        Task<bool> ExistsAsync(Guid supplierId);
+        Task<bool> ExistsByIdAsync(Guid id);
+        Task<bool> ExistsByCodeAsync(string supplierCode, Guid? excludeId = null);
     }
 }

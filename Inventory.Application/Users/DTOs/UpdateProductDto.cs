@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Inventory.Application.Users.DTOs
+namespace Inventory.Application.Products.DTOs
 {
     public class UpdateProductDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public required string Name { get; set; }
         public required string Code { get; set; }
         public string? ImgUrl { get; set; }

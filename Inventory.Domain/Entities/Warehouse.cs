@@ -9,11 +9,11 @@ namespace Inventory.Domain.Entities
     public class Warehouse
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
-        public string Code { get; set; }
-        public string Phone { get; set; }
-        public string Address { get; set; }
-        public string Description { get; set; }
+        public required string Name { get; set; }
+        public required string Code { get; set; }
+        public required string Phone { get; set; }
+        public required string Address { get; set; }
+        public string Description { get; set; } = string.Empty;
         public bool IsMain { get; set; }
     }
 }

@@ -5,7 +5,6 @@ using Inventory.Application.Suppliers.Dto;
 using Inventory.Application.Users.DTOs;
 using Inventory.Application.Warehouses.DTOs;
 using Inventory.Domain.Entities;
-using Inventory.Domain.Entity;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,6 +1,5 @@
 ﻿using Inventory.Domain.Entities;
-using Inventory.Domain.Entity;
-using Inventory.Domain.Interface;
+using Inventory.Domain.Interfaces;
 using Inventory.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using System;
