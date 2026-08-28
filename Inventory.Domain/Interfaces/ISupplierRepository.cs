@@ -11,7 +11,7 @@ namespace Inventory.Domain.Interfaces
     {
         Task<Supplier?> GetAsync(Guid id);
 
-        Task<List<Supplier>> GetAllAsycn();
+        Task<List<Supplier>> GetAllAsync();
 
         Task CreateAsync(Supplier supplier);
 

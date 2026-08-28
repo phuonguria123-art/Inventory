@@ -37,10 +37,12 @@ namespace Inventory.Application.Warehouses
             return _mapper.Map<WarehouseDto>(warehouse);
         }
 
-        public async Task CreateAsync(CreateWarehouseDto product)
+        public async Task<WarehouseDto> CreateAsync(CreateWarehouseDto product)
         {
             await ValidateWarehouse(product.Name, product.Code, product.Address, product.Phone);
-            await _warehouseRepo.CreateAysnc(_mapper.Map<Warehouse>(product));
+            var warehouse = _mapper.Map<Warehouse>(product);
+            await _warehouseRepo.CreateAsync(warehouse);
+            return _mapper.Map<WarehouseDto>(warehouse);
         }
 
         public async Task DeleteAsync(Guid id)

@@ -23,7 +23,7 @@ namespace Inventory.Infrastructure.Repositories
             return await _context.Suppliers.FindAsync(id);
         }
 
-        public async Task<List<Supplier>> GetAllAsycn()
+        public async Task<List<Supplier>> GetAllAsync()
         {
             return await _context.Suppliers.ToListAsync();
         }

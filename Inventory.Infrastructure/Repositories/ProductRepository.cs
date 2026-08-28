@@ -56,5 +56,14 @@ namespace Inventory.Infrastructure.Repository
             await _context.SaveChangesAsync();
         }
 
+        public async Task<bool> ExistByIdAsync(Guid Id)
+        {
+            return await _context.Products.AnyAsync(x => x.Id == Id);
+        }
+        public async Task<bool> ExistByCodeAsync(string productCode, Guid? excludeId = null)
+        {
+            return await _context.Products.AnyAsync(x => x.Code == productCode && (!excludeId.HasValue || x.Id != excludeId.Value));
+        }
+        
     }
 }

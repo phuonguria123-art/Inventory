@@ -16,5 +16,7 @@ namespace Inventory.Domain.Entities
         public string? Size { get; set; }
         public string? Description { get; set; }
         public string? Status { get; set; }
+        public Guid? SupplierId { get; set; }
+        public Supplier? Supplier { get; set; }
     }
 }

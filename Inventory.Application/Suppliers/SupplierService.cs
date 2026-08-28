@@ -33,7 +33,7 @@ namespace Inventory.Application.Suppliers
 
         public async Task<List<SupplierDto>> GetAllAsync()
         {
-            return _mapper.Map<List<SupplierDto>>(await _supplierRepo.GetAllAsycn());
+            return _mapper.Map<List<SupplierDto>>(await _supplierRepo.GetAllAsync());
         }
 
         public async Task<SupplierDto> GetByIdAsync(Guid id)
@@ -47,13 +47,15 @@ namespace Inventory.Application.Suppliers
             return _mapper.Map<SupplierDto>(supplier);
         }
 
-        public async Task CreateAsync(CreateSupplierDto dto)
+        public async Task<SupplierDto> CreateAsync(CreateSupplierDto dto)
+
         {
             await ValidateSupplier(dto.Name, dto.Address, dto.Phone, dto.Code, null);
 
             var supplier = _mapper.Map<Supplier>(dto);
             supplier.Id = Guid.NewGuid();
             await _supplierRepo.CreateAsync(supplier);
+            return _mapper.Map<SupplierDto>(supplier);
         }
 
         public async Task UpdateAsync(UpdateSupplierDto dto)

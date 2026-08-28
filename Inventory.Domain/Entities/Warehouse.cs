@@ -13,6 +13,7 @@ namespace Inventory.Domain.Entities
         public required string Code { get; set; }
         public required string Phone { get; set; }
         public required string Address { get; set; }
+        public decimal Capacity { get; set; }
         public string Description { get; set; } = string.Empty;
         public bool IsMain { get; set; }
     }

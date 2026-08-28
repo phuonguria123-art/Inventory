@@ -34,8 +34,8 @@ namespace Inventory.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateWarehouseDto dto)
         {
-            await _warehouseService.CreateAsync(dto);
-            return StatusCode(StatusCodes.Status201Created);
+            var warehouse = await _warehouseService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = warehouse.Id }, warehouse);
         }
 
         [HttpPut("{id:guid}")]

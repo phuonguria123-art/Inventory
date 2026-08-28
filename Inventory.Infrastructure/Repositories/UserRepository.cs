@@ -12,31 +12,48 @@ namespace Inventory.Infrastructure.Repositories
 {
     public class UserRepository(ApplicationDbContext _context) : IUserRepository
     {
-        public async Task Create(User user)
+        public async Task CreateAsync(User user)
         {
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
         }
 
-        public async Task<User> GetUser(string username)
+        public async Task<User?> GetUserAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(x => x.Username == username);
+            return await _context.Users
+                .Include(x => x.UserRoles)
+                .ThenInclude(x => x.Role)
+                .ThenInclude(x => x.RolePermissions)
+                .ThenInclude(x => x.Permission)
+                .FirstOrDefaultAsync(x => x.Username == username);
+        }
+        public async Task<User?> GetUserByIdAsync(Guid id)
+        {
+            return await _context.Users
+       .Include(x => x.UserRoles)
+           .ThenInclude(x => x.Role)
+               .ThenInclude(x => x.RolePermissions)
+                   .ThenInclude(x => x.Permission)
+       .FirstOrDefaultAsync(x => x.Id == id);
         }
 
-        public async Task<User> GetUserById(Guid id)
+        public Task<bool> ExistByNameAsync(string username)
         {
-            return await _context.Users.FindAsync(id);
+            return _context.Users.AnyAsync(x => x.Username == username);
         }
 
-        public  Task<bool> GetUserByUsername(string username)
-        {
-            return  _context.Users.AnyAsync(x => x.Username == username);
-        }
-
-        public async Task Update(User user)
+        public async Task UpdateAsync(User user)
         {
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
+        public async Task<User?> GetUserWithRolesAsync(Guid userId)
+        {
+            return await _context.Users
+                .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+                .FirstOrDefaultAsync(user => user.Id == userId);
+        }
+
     }
 }

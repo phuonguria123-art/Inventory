@@ -9,10 +9,11 @@ namespace Inventory.Domain.Interfaces
 {
     public interface IUserRepository
     {
-        Task<Boolean> GetUserByUsername(string username);
-        Task<User> GetUser(string username);
-        Task<User> GetUserById(Guid id);
-        Task Create(User user);
-        Task Update(User user);
+        Task<bool> ExistByNameAsync(string username);
+        Task<User?> GetUserAsync(string username);
+        Task<User?> GetUserByIdAsync(Guid id);
+        Task<User?> GetUserWithRolesAsync(Guid userId);
+        Task CreateAsync(User user);
+        Task UpdateAsync(User user);
     }
 }

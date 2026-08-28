@@ -11,7 +11,7 @@ namespace Inventory.Domain.Interfaces
     {
         Task<Warehouse?> GetAsync(Guid id);
         Task<List<Warehouse>> GetAllAsync();
-        Task CreateAysnc(Warehouse warehouse);
+        Task CreateAsync(Warehouse warehouse);
         Task UpdateAsync(Warehouse warehouse);
         Task DeleteAsync(Warehouse warehouse);
         Task<bool> ExistsByIdAsync(Guid id);

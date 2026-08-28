@@ -1,4 +1,5 @@
 using AutoMapper;
+using Inventory.Application.Authorization;
 using Inventory.Application.Interfaces;
 using Inventory.Application.Mappings;
 using Inventory.Application.Products.Services;
@@ -38,6 +39,13 @@ namespace Inventory.Api
             ValidateIssuerSigningKey = true
         };
     });
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("ProductRead", policy =>
+                    policy.RequireClaim("permission", PermissionCodes.ProductRead));
+                options.AddPolicy("ProductCreate", policy =>
+                 policy.RequireClaim("permission", PermissionCodes.ProductCreate));
+            });
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
@@ -78,6 +86,7 @@ namespace Inventory.Api
                     {
                         NotFoundException => StatusCodes.Status404NotFound,
                         ValidationException => StatusCodes.Status400BadRequest,
+                        ConflictException => StatusCodes.Status409Conflict,
                         _ => StatusCodes.Status500InternalServerError
                     };
 

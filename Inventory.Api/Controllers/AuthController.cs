@@ -17,49 +17,32 @@ namespace Inventory.Api.Controllers
     public class AuthController(
         IAuthService authService) : ControllerBase
     {
-        public static User user = new() { PasswordHash = string.Empty, Username = string.Empty };
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(UserDto request)
+        public async Task<ActionResult> Register(RegisterRequestDto request)
         {
-           var user = await authService.RegisterAsync(request);
-            if (user == null) {
-                return BadRequest("Tên người dùng đã tồn tại");
-            }
-            return Ok(user);
+            var user = await authService.RegisterAsync(request);
+            return StatusCode(StatusCodes.Status201Created, user);
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<string>> Login(UserDto request)
+        public async Task<ActionResult<TokenResponseDto>> Login(LoginRequestDto request)
         {
             var token = await authService.LoginAsync(request);
             if (token == null)
             {
-                return BadRequest("Tên đăng nhập hoặc mật khẩu không hợp lệ");
+                return Unauthorized("Tên đăng nhập hoặc mật khẩu không hợp lệ.");
             }
             return Ok(token);
         }
-        [HttpPost("refresh-token")]
+        [HttpPost("refresh")]
         public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
             var result = await authService.RefreshTokensAsync(request);
             if (result is null || result.AccessToken is null || result.RefreshToken is null)
                 return Unauthorized("Invalid refresh token.");
-
             return Ok(result);
         }
+        //change-password
 
-        [Authorize]
-        [HttpGet]
-        public IActionResult AuthenticatedOnlyEndpoint()
-        {
-            return Ok("You are authenticated!");
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admin-only")]
-        public IActionResult AdminOnlyEndpoint()
-        {
-            return Ok("You are and admin!");
-        }
     }
 }

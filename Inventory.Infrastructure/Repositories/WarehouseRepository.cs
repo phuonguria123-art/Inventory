@@ -12,7 +12,7 @@ namespace Inventory.Infrastructure.Repositories
 {
     public class WarehouseRepository(ApplicationDbContext _context) : IWarehouseRepository
     {
-        public async Task CreateAysnc(Warehouse warehouse)
+        public async Task CreateAsync(Warehouse warehouse)
         {
             await _context.Warehouses.AddAsync(warehouse);
             await _context.SaveChangesAsync();

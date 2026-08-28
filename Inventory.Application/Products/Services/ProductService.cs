@@ -9,22 +9,23 @@ namespace Inventory.Application.Products.Services
     public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepo;
+        private readonly ISupplierRepository _supplierRepo;
         private readonly IMapper _mapper;
 
-        public ProductService(IProductRepository productRepo, IMapper mapper)
+        public ProductService(IProductRepository productRepo, IMapper mapper, ISupplierRepository supplierRepo)
         {
             _productRepo = productRepo;
             _mapper = mapper;
+            _supplierRepo = supplierRepo;
         }
 
         public async Task<ProductDto> CreateAsync(CreateProductDto dto)
         {
-            ValidateProduct(dto.Name, dto.Code);
-            var exists = (await _productRepo.GetAllAsync())
-                .Any(x => x.Code.Equals(dto.Code, StringComparison.OrdinalIgnoreCase));
+           await ValidateProduct(dto.Name, dto.Code, dto.SupplierId);
+            var exists = await _productRepo.ExistByCodeAsync(dto.Code, null);
 
             if (exists)
-                throw new NotFoundException("Mã sản phẩm đã tồn tại");
+                throw new ValidationException("Mã sản phẩm đã tồn tại");
 
             var product = _mapper.Map<Product>(dto);
             product.Id = Guid.NewGuid();
@@ -57,17 +58,13 @@ namespace Inventory.Application.Products.Services
             return _mapper.Map<ProductDto>(product);
         }
 
-        public async Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto dto)
+        public async Task<ProductDto> UpdateAsync( UpdateProductDto dto)
         {
-            if (id != dto.Id)
-                throw new ValidationException("Id đường dẫn và Id payload không khớp");
-
-            var existingProduct = await _productRepo.GetByIdAsync(id);
+            await ValidateProduct(dto.Name, dto.Code, dto.SupplierId);
+            var existingProduct = await _productRepo.GetByIdAsync(dto.Id);
             if (existingProduct == null)
                 throw new NotFoundException("Không tìm thấy sản phẩm để cập nhật");
-            var duplicateProduct = (await _productRepo.GetAllAsync())
-                .Any(x => x.Id != id && x.Code.Equals(dto.Code, StringComparison.OrdinalIgnoreCase));
-            ValidateProduct(dto.Name, dto.Code);
+            var duplicateProduct = await _productRepo.ExistByCodeAsync(dto.Code, dto.Id);
             if (duplicateProduct)
                 throw new ValidationException("Mã sản phẩm đã tồn tại");
             existingProduct.Name = dto.Name;
@@ -80,14 +77,19 @@ namespace Inventory.Application.Products.Services
             return _mapper.Map<ProductDto>(existingProduct);
         }
 
-        private void ValidateProduct(string name, string code)
+        private async Task ValidateProduct(string name, string code, Guid? supplierId = null)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ValidationException("Tên sản phẩm không được để trống");
 
             if (string.IsNullOrWhiteSpace(code))
                 throw new ValidationException("Mã sản phẩm không được để trống");
-
+            if (supplierId.HasValue)
+            {
+                var supplierExist = await _supplierRepo.ExistsByIdAsync(supplierId.Value);
+                if (!supplierExist)
+                    throw new ValidationException("Nhà cung cấp không hợp lệ");
+            }
         }
     }
 }

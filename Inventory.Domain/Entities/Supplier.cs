@@ -15,5 +15,6 @@ namespace Inventory.Domain.Entities
         public string Email { get; set; } = string.Empty;
         public string Code { get; set; } = string.Empty;
         public string ContactPerson { get; set; } = string.Empty;
+        public ICollection<Product> Products { get; set; } = [];
     }
 }

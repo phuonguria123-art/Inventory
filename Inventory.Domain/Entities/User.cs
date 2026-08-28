@@ -7,8 +7,9 @@ namespace Inventory.Domain.Entities
         public Guid Id { get; set; }
         public string Username { get; set; } = string.Empty;
         public required string PasswordHash { get; set; }
-        public string Role { get; set; } = string.Empty;
+        public required string Email { get; set; }
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
+        public ICollection<UserRole> UserRoles { get; set; } = [];
     }
 }

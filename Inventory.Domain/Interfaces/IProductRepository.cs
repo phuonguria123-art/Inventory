@@ -17,5 +17,7 @@ namespace Inventory.Domain.Interfaces
         Task UpdateAsync(Product product);
         Task DeleteAsync(Product product);
         Task<List<Guid>> NotExits(List<Guid> ids);
+        Task<bool> ExistByIdAsync(Guid Id);
+        Task<bool> ExistByCodeAsync(string productCode, Guid? excludeId = null);
     }
 }

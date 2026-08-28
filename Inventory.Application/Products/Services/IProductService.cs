@@ -10,7 +10,7 @@ namespace Inventory.Application.Products.Services
         Task<ProductDto> CreateAsync(CreateProductDto product);
         Task<List<ProductDto>> GetAllAsync();
         Task<ProductDto> GetByIdAsync(Guid id);
-        Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto product);
+        Task<ProductDto> UpdateAsync(UpdateProductDto product);
         Task DeleteAsync(Guid id);
     }
 }

@@ -20,9 +20,24 @@ namespace Inventory.Infrastructure.Authentication
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role)
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
             };
+            var roles = user.UserRoles
+            .Select(userRole => userRole.Role.Name)
+            .Distinct();
+
+            claims.AddRange(
+                roles.Select(role =>
+                    new Claim(ClaimTypes.Role, role)));
+
+            var permissions = user.UserRoles
+                .SelectMany(userRole => userRole.Role.RolePermissions)
+                .Select(rolePermission => rolePermission.Permission.Code)
+                .Distinct();
+
+            claims.AddRange(
+                permissions.Select(permission =>
+                    new Claim("permission", permission)));
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
