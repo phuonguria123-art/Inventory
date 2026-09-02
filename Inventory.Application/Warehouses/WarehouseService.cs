@@ -39,7 +39,7 @@ namespace Inventory.Application.Warehouses
 
         public async Task<WarehouseDto> CreateAsync(CreateWarehouseDto product)
         {
-            await ValidateWarehouse(product.Name, product.Code, product.Address, product.Phone);
+            await ValidateWarehouse(product.Name, product.Code, product.Address, product.Phone, product.Capacity);
             var warehouse = _mapper.Map<Warehouse>(product);
             await _warehouseRepo.CreateAsync(warehouse);
             return _mapper.Map<WarehouseDto>(warehouse);
@@ -53,6 +53,9 @@ namespace Inventory.Application.Warehouses
                 throw new NotFoundException("Kho hàng không tồn tại");
             }
 
+            if (await _warehouseRepo.HasInventoryAsync(id))
+                throw new ConflictException("Không thể xóa kho đang còn hàng tồn");
+
             await _warehouseRepo.DeleteAsync(warehouse);
         }
 
@@ -64,13 +67,13 @@ namespace Inventory.Application.Warehouses
                 throw new NotFoundException("Kho hàng không tồn tại");
             }
 
-            await ValidateWarehouse(product.Name, product.Code, product.Address, product.Phone, product.Id);
+            await ValidateWarehouse(product.Name, product.Code, product.Address, product.Phone, product.Capacity, product.Id);
 
             _mapper.Map(product, warehouse);
             await _warehouseRepo.UpdateAsync(warehouse);
         }
 
-        private async Task ValidateWarehouse(string name, string code, string address, string phone, Guid? excludeId = null)
+        private async Task ValidateWarehouse(string name, string code, string address, string phone, decimal capacity, Guid? excludeId = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -95,6 +98,9 @@ namespace Inventory.Application.Warehouses
             if (await _warehouseRepo.ExistsByCodeAsync(code, excludeId))
             {
                 throw new ValidationException("Mã kho đã tồn tại");
+            }
+            if (capacity <= 0) {
+                throw new ValidationException("Dung tích kho không hợp lệ");
             }
         }
     }

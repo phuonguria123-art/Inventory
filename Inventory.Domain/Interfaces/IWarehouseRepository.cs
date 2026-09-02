@@ -16,5 +16,6 @@ namespace Inventory.Domain.Interfaces
         Task DeleteAsync(Warehouse warehouse);
         Task<bool> ExistsByIdAsync(Guid id);
         Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null);
+        Task<bool> HasInventoryAsync(Guid warehouseId);
     }
 }

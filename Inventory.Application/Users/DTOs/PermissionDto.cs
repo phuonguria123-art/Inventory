@@ -6,11 +6,10 @@ using System.Threading.Tasks;
 
 namespace Inventory.Application.Users.DTOs
 {
-    public class UserProfileDto
+    public class PermissionDto
     {
         public Guid Id { get; set; }
-        public required string Username { get; set; }
-        public required string Email { get; set; }
-        public IReadOnlyCollection<RoleDto> Roles { get; set; } = [];
+        public string Code { get; set; } = null!;
+        public string? Description { get; set; }
     }
 }

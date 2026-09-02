@@ -29,4 +29,35 @@ public static class PermissionCodes
     public const string RoleManage = "role.manage";
     public const string PermissionRead = "permission.read";
     public const string AuditRead = "audit.read";
+
+    public static readonly IReadOnlyCollection<string> All =
+   [
+        ProductRead,
+    ProductCreate,
+    ProductUpdate,
+    ProductDelete,
+
+    WarehouseRead,
+    WarehouseCreate,
+    WarehouseUpdate,
+    WarehouseDelete,
+
+    SupplierRead,
+    SupplierCreate,
+    SupplierUpdate,
+    SupplierDelete,
+
+    InventoryRead,
+    InventoryReceive,
+    InventoryIssue,
+    InventoryTransfer,
+    InventoryAdjust,
+
+    UserRead,
+    UserManage,
+    RoleRead,
+    RoleManage,
+    PermissionRead,
+    AuditRead
+    ];
 }

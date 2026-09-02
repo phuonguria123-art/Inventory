@@ -13,7 +13,7 @@ namespace Inventory.Infrastructure.Repositories
     public class PurchaseOrderRepository(ApplicationDbContext _context) : IPurchaseOrderRepository
     {
 
-        public async Task<PurchanseOrder> GetAsync(Guid id)
+        public async Task<PurchanseOrder?> GetAsync(Guid id)
         {
             return await _context.PurchanseOrders.FindAsync(id);
         }

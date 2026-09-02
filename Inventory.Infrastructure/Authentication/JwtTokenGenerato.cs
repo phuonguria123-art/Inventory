@@ -40,15 +40,15 @@ namespace Inventory.Infrastructure.Authentication
                     new Claim("permission", permission)));
 
             var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
+                Encoding.UTF8.GetBytes(configuration["AppSettings:Token"]!));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var tokenDescriptor = new JwtSecurityToken(
-                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
-                audience: configuration.GetValue<string>("AppSettings:Audience"),
+                issuer: configuration["AppSettings:Issuer"],
+                audience: configuration["AppSettings:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
+                expires: DateTime.UtcNow.AddMinutes(GetAccessTokenMinutes()),
                 signingCredentials: creds
             );
 
@@ -61,6 +61,14 @@ namespace Inventory.Infrastructure.Authentication
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
+        }
+
+        private int GetAccessTokenMinutes()
+        {
+            return int.TryParse(configuration["AppSettings:AccessTokenMinutes"], out var minutes)
+                && minutes > 0
+                    ? minutes
+                    : 15;
         }
 
     }

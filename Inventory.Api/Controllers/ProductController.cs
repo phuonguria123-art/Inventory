@@ -1,11 +1,12 @@
-﻿using Inventory.Application.Products.DTOs;
+﻿using Inventory.Application.Authorization;
+using Inventory.Application.Products.DTOs;
 using Inventory.Application.Products.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/products")]
     [ApiController]
     public class ProductController : ControllerBase
     {
@@ -15,15 +16,15 @@ namespace Inventory.Api.Controllers
         {
             _productService = productService;
         }
-        [Authorize(Policy = "ProductRead")]
+        [Authorize(Policy = PermissionCodes.ProductRead)]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductDto>>> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
         {
-            var products = await _productService.GetAllAsync();
+            var products = await _productService.GetAllAsync(pageNumber, pageSize);
             return Ok(products);
         }
 
-        [Authorize(Policy = "ProductCreate")]
+        [Authorize(Policy = PermissionCodes.ProductRead)]
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<ProductDto>> GetById(Guid id)
         {
@@ -31,6 +32,7 @@ namespace Inventory.Api.Controllers
             return Ok(product);
         }
 
+        [Authorize(Policy = PermissionCodes.ProductCreate)]
         [HttpPost]
         public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
         {
@@ -38,6 +40,7 @@ namespace Inventory.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
         }
 
+        [Authorize(Policy = PermissionCodes.ProductUpdate)]
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id,[FromBody] UpdateProductDto dto)
         {
@@ -46,6 +49,7 @@ namespace Inventory.Api.Controllers
             return NoContent();
         }
 
+        [Authorize(Policy = PermissionCodes.ProductDelete)]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {

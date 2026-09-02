@@ -2,44 +2,57 @@
 using Inventory.Application.Interfaces;
 using Inventory.Application.Users.DTOs;
 using Inventory.Domain.Entities;
+using Inventory.Domain.Enums;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
-using Microsoft.AspNetCore.Identity;
+using BC = BCrypt.Net.BCrypt;
 
 namespace Inventory.Application.Users.Services
 {
     public class AuthService(
         IUserRepository userRepository,
+        IRoleRepository roleRepository,
         IJwtTokenGenerator jwtTokenGenerator,
         IMapper _mapper
         ) : IAuthService
     {
         public async Task<UserProfileDto?> RegisterAsync(RegisterRequestDto request)
         {
-            ValidateUser(request.Username, request.Password);
-            if (string.IsNullOrWhiteSpace(request.Email)) throw new ValidationException("Email không được bỏ trống");
-
-            if (await userRepository.ExistByNameAsync(request.Username))
+            var username = request.Username.Trim();
+            var email = request.Email.Trim().ToLowerInvariant();
+            ValidateUser(username, request.Password);
+            if (string.IsNullOrWhiteSpace(email)) throw new ValidationException("Email không được bỏ trống");
+            if (await userRepository.ExistByEmail(email))
+            {
+                throw new ConflictException("Email đã được sử dụng");
+            }
+            if (await userRepository.ExistByNameAsync(username))
                 throw new ConflictException("Tên người dùng đã được sử dụng");
 
-            var user = new User { PasswordHash = string.Empty, Email = request.Email };
-            var hashedPassword = new PasswordHasher<User>()
-                .HashPassword(user, request.Password);
-            user.Username = request.Username;
+            var user = new User { PasswordHash = string.Empty, Email = email };
+            string hashedPassword = BC.HashPassword(request.Password);
+            user.Username = username;
             user.PasswordHash = hashedPassword;
+
+            var roleStaff = await roleRepository.GetByNameAsync(nameof(RoleName.Staff));
+            if (roleStaff == null)
+            {
+                throw new InvalidOperationException("role staff chưa được cấu hình");
+            }
+            user.UserRoles = [new UserRole { RoleId = roleStaff.Id, Role = roleStaff }];
             await userRepository.CreateAsync(user);
             return _mapper.Map<UserProfileDto>(user);
         }
         public async Task<TokenResponseDto?> LoginAsync(LoginRequestDto request)
         {
-            ValidateUser(request.Username, request.Password);
-            var user = await userRepository.GetUserAsync(request.Username);
+            var username = request.Username.Trim();
+            ValidateUser(username, request.Password);
+            var user = await userRepository.GetUserAsync(username);
             if (user is null)
             {
                 return null;
             }
-            if (new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password)
-                == PasswordVerificationResult.Failed)
+            if (!BC.Verify(request.Password, user.PasswordHash))
             {
                 return null;
             }
@@ -51,7 +64,6 @@ namespace Inventory.Application.Users.Services
         {
             if (string.IsNullOrWhiteSpace(userName)) throw new ValidationException("Tên người dùng không được bỏ trống");
             if (string.IsNullOrWhiteSpace(password)) throw new ValidationException("Mật khẩu không được bỏ trống");
-
         }
         public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
         {
@@ -60,28 +72,6 @@ namespace Inventory.Application.Users.Services
                 return null;
 
             return await CreateTokenResponse(user);
-        }
-        public async Task UpdateUserRolesAsync(
-    Guid userId,
-    IReadOnlyCollection<Guid> roleIds)
-        {
-            var user = await userRepository.GetUserWithRolesAsync(userId);
-
-            if (user is null)
-                throw new NotFoundException("Không tìm thấy người dùng.");
-
-            user.UserRoles.Clear();
-
-            foreach (var roleId in roleIds.Distinct())
-            {
-                user.UserRoles.Add(new UserRole
-                {
-                    UserId = userId,
-                    RoleId = roleId
-                });
-            }
-
-            await userRepository.UpdateAsync(user);
         }
         private async Task<TokenResponseDto> CreateTokenResponse(User user)
         {

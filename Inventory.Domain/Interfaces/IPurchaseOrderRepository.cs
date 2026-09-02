@@ -9,7 +9,7 @@ namespace Inventory.Domain.Interfaces
 {
     public interface IPurchaseOrderRepository
     {
-        Task<PurchanseOrder> GetAsync(Guid id);
+        Task<PurchanseOrder?> GetAsync(Guid id);
         Task<List<PurchanseOrder>> GetListAsync();
         Task CreateAsync(PurchanseOrder purchanseOrder);
         Task UpdateAsync(PurchanseOrder purchanseOrder);

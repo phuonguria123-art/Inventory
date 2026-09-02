@@ -9,9 +9,10 @@ namespace Inventory.Domain.Interfaces
 {
     public interface IProductRepository
     {
-        Task<Product> GetByIdAsync(Guid id);
+        Task<Product?> GetByIdAsync(Guid id);
 
         Task<List<Product>> GetAllAsync();
+        Task<(List<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize);
 
         Task AddAsync(Product product);
         Task UpdateAsync(Product product);

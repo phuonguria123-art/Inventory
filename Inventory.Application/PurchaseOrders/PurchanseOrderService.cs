@@ -3,6 +3,7 @@ using Inventory.Application.PurchaseOrders.Dto;
 using Inventory.Application.PurrchanseOrderDetail.Dto;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
+using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -16,8 +17,7 @@ namespace Inventory.Application.PurchaseOrders
         IPurchaseOrderRepository _purchaseOrderRepo,
         IWarehouseRepository _warehouseRepository,
         ISupplierRepository _supplierRepository,
-        IProductRepository _productRepository,
-        IMapper _mapper
+        IProductRepository _productRepository
         )
     {
         private static int counter = 0;
@@ -43,13 +43,16 @@ namespace Inventory.Application.PurchaseOrders
             //tạo đơn hàng
             var purchanse = MapToPurchanse(purchanseOrder);
             await _purchaseOrderRepo.CreateAsync(purchanse);
-            return null;
+            return purchanse;
 
         }
         // cập nhật trạng thái Sent, confirm,shipping
         public async Task UpdateStatus(Guid id, PurchaseOrderStatus status)
         {
             var order = await _purchaseOrderRepo.GetAsync(id);
+            if (order == null)
+                throw new NotFoundException("Đơn mua không tồn tại");
+
             order.Status = status;
             await _purchaseOrderRepo.UpdateAsync(order);
 
@@ -60,13 +63,13 @@ namespace Inventory.Application.PurchaseOrders
             var order = await _purchaseOrderRepo.GetAsync(request.Id);
             if (order == null)
             {
-                return null;
+                throw new NotFoundException("Đơn mua không tồn tại");
             }
             foreach (var orderDetail in request.OrderDetails)
             {
                 var detail = order.OrderDetails.FirstOrDefault(x => x.Id == orderDetail.Id);
                 if (detail == null)
-                    return null;
+                    throw new NotFoundException($"Chi tiết đơn mua {orderDetail.Id} không tồn tại");
                 detail.ActualReceivedQuantity = orderDetail.ActualReceivedQuantity;
 
             }

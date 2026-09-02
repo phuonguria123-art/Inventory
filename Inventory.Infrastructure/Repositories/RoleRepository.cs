@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 namespace Inventory.Infrastructure.Repositories
 {
 
-    public class RoleRepositosy : IRoleRepository
+    public class RoleRepository : IRoleRepository
     {
         private readonly ApplicationDbContext _context;
-        public RoleRepositosy(ApplicationDbContext context)
+        public RoleRepository(ApplicationDbContext context)
         {
             _context = context;
         }
@@ -25,12 +25,18 @@ namespace Inventory.Infrastructure.Repositories
                .ThenInclude(x => x.Permission).ToListAsync();
         }
 
-        public async Task<Role?> GetByIdAsync(Guid id)
+        public async Task<Role?> GetByNameAsync(string name)
         {
             return await _context.Roles
                 .Include(x => x.RolePermissions)
                .ThenInclude(x => x.Permission)
-               .FirstOrDefaultAsync(x => x.Id == id);
+               .FirstOrDefaultAsync(x => x.Name == name);
+        }
+        public async Task<List<Role>> GetByIdsAsync(IReadOnlyCollection<Guid> ids)
+        {
+            return await _context.Roles
+                .Where(role => ids.Contains(role.Id))
+                .ToListAsync();
         }
         public async Task CreateAsync(Role role)
         {

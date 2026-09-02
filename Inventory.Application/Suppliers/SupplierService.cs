@@ -3,6 +3,8 @@ using Inventory.Application.Suppliers.Dto;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
 
 namespace Inventory.Application.Suppliers
 {
@@ -50,7 +52,7 @@ namespace Inventory.Application.Suppliers
         public async Task<SupplierDto> CreateAsync(CreateSupplierDto dto)
 
         {
-            await ValidateSupplier(dto.Name, dto.Address, dto.Phone, dto.Code, null);
+            await ValidateSupplier(dto.Name, dto.Address, dto.Phone, dto.Email, dto.Code, dto.ContactPerson, null);
 
             var supplier = _mapper.Map<Supplier>(dto);
             supplier.Id = Guid.NewGuid();
@@ -66,13 +68,20 @@ namespace Inventory.Application.Suppliers
                 throw new NotFoundException("Không tìm thấy nhà cung cấp để cập nhật");
             }
 
-            await ValidateSupplier(dto.Name, dto.Address, dto.Phone, dto.Code, dto.Id);
+            await ValidateSupplier(dto.Name, dto.Address, dto.Phone, dto.Email, dto.Code, dto.ContactPerson, dto.Id);
             _mapper.Map(dto, supplier);
 
             await _supplierRepo.UpdateAsync(supplier);
         }
 
-        private async Task ValidateSupplier(string name, string address, string phone, string? code, Guid? excludeId)
+        private async Task ValidateSupplier(
+            string name,
+            string address,
+            string phone,
+            string email,
+            string code,
+            string contactPerson,
+            Guid? excludeId)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -89,7 +98,19 @@ namespace Inventory.Application.Suppliers
                 throw new ValidationException("Số điện thoại không được bỏ trống");
             }
 
-            if (!string.IsNullOrWhiteSpace(code) && await _supplierRepo.ExistsByCodeAsync(code, excludeId))
+            if (!Regex.IsMatch(phone, @"^[0-9+() .-]{8,20}$"))
+                throw new ValidationException("Số điện thoại không đúng định dạng");
+
+            if (string.IsNullOrWhiteSpace(email) || !MailAddress.TryCreate(email, out _))
+                throw new ValidationException("Email không đúng định dạng");
+
+            if (string.IsNullOrWhiteSpace(code))
+                throw new ValidationException("Mã nhà cung cấp không được bỏ trống");
+
+            if (string.IsNullOrWhiteSpace(contactPerson))
+                throw new ValidationException("Người liên hệ không được bỏ trống");
+
+            if (await _supplierRepo.ExistsByCodeAsync(code, excludeId))
             {
                 throw new ValidationException("Mã NCC đã tồn tại");
             }

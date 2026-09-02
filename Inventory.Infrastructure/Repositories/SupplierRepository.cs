@@ -20,12 +20,12 @@ namespace Inventory.Infrastructure.Repositories
 
         public async Task<Supplier?> GetAsync(Guid id)
         {
-            return await _context.Suppliers.FindAsync(id);
+            return await _context.Suppliers.FirstOrDefaultAsync(x => x.Id == id && x.IsActive);
         }
 
         public async Task<List<Supplier>> GetAllAsync()
         {
-            return await _context.Suppliers.ToListAsync();
+            return await _context.Suppliers.AsNoTracking().Where(x => x.IsActive).ToListAsync();
         }
 
         public async Task CreateAsync(Supplier supplier)
@@ -42,13 +42,13 @@ namespace Inventory.Infrastructure.Repositories
 
         public async Task DeleteAsync(Supplier supplier)
         {
-            _context.Suppliers.Remove(supplier);
+            supplier.IsActive = false;
             await _context.SaveChangesAsync();
         }
 
         public async Task<bool> ExistsByIdAsync(Guid id)
         {
-            return await _context.Suppliers.AnyAsync(x => x.Id == id);
+            return await _context.Suppliers.AnyAsync(x => x.Id == id && x.IsActive);
         }
 
         public async Task<bool> ExistsByCodeAsync(string supplierCode, Guid? excludeId = null)

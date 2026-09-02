@@ -10,6 +10,7 @@ namespace Inventory.Domain.Entities
         public string? ImgUrl { get; set; }
         public string? Origin { get; set; }
         public double Weight { get; set; }
+        public decimal UnitPrice { get; set; }
         public string? LotNumber { get; set; }
         public string? BrandId { get; set; }
         public string? CategoryName { get; set; }

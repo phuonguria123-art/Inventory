@@ -29,15 +29,20 @@ namespace Inventory.Application.Mappings
 
             CreateMap<Supplier, SupplierDto>().ReverseMap();
             CreateMap<Supplier, CreateSupplierDto>().ReverseMap();
-            CreateMap<Supplier, UpdateWarehouseDto>().ReverseMap();
+
+            CreateMap<Supplier, UpdateSupplierDto>().ReverseMap();
 
             CreateMap<User, UserProfileDto>()
-    .ForMember(
-        destination => destination.Roles,
-        options => options.MapFrom(source =>
-            source.UserRoles.Select(userRole =>
-                userRole.Role.Name)));
-
+                .ForMember(
+                    destination => destination.Roles,
+                    options => options.MapFrom(source =>
+                        source.UserRoles.Select(userRole => userRole.Role)));
+            CreateMap<Permission, PermissionDto>();
+            CreateMap<Role, RoleDto>()
+                .ForMember(
+                    destination => destination.Permissions,
+                    options => options.MapFrom(source =>
+                        source.RolePermissions.Select(rolePermission => rolePermission.Permission)));
             //  CreateMap<Product, ProductDto>()
             //.ForMember(
             //    dest => dest.ProductName,

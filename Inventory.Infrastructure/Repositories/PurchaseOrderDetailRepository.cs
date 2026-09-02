@@ -17,7 +17,7 @@ namespace Inventory.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<PurchanseOrderDetail> GetAsync(Guid id)
+        public async Task<PurchanseOrderDetail?> GetAsync(Guid id)
         {
             return await _context.PurchanseOrdersDetails.FindAsync(id);
         }

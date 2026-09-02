@@ -1,12 +1,14 @@
 ﻿
+using Inventory.Application.Authorization;
 using Inventory.Application.Warehouses;
 using Inventory.Application.Warehouses.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/warehouses")]
     [ApiController]
     public class WarehouseController : ControllerBase
     {
@@ -17,13 +19,14 @@ namespace Inventory.Api.Controllers
             _warehouseService = warehouseService;
         }
 
+        [Authorize(Policy = PermissionCodes.WarehouseRead)]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var result = await _warehouseService.GetAllAsync();
             return Ok(result);
         }
-
+        [Authorize(Policy = PermissionCodes.WarehouseRead)]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -31,6 +34,7 @@ namespace Inventory.Api.Controllers
             return Ok(result);
         }
 
+        [Authorize(Policy = PermissionCodes.WarehouseCreate)]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateWarehouseDto dto)
         {
@@ -38,6 +42,7 @@ namespace Inventory.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = warehouse.Id }, warehouse);
         }
 
+        [Authorize(Policy =PermissionCodes.WarehouseUpdate)]
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseDto dto)
         {
@@ -45,7 +50,7 @@ namespace Inventory.Api.Controllers
             await _warehouseService.UpdateAsync(dto);
             return NoContent();
         }
-
+        [Authorize(Policy = PermissionCodes.WarehouseDelete)]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {

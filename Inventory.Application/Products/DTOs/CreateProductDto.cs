@@ -13,6 +13,7 @@ namespace Inventory.Application.Products.DTOs
         public string? ImgUrl { get; set; }
         public string? Origin { get; set; }
         public double Weight { get; set; }
+        public decimal UnitPrice { get; set; }
         public Guid? SupplierId { get; set; }
     }
 }

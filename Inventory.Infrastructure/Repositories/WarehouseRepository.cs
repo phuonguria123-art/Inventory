@@ -20,13 +20,21 @@ namespace Inventory.Infrastructure.Repositories
 
         public async Task DeleteAsync(Warehouse warehouse)
         {
-            _context.Warehouses.Remove(warehouse);
+            warehouse.IsDeleted = true;
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> HasInventoryAsync(Guid warehouseId)
+        {
+            return await _context.Inventories.AnyAsync(item =>
+                       item.WarehouseId == warehouseId && item.QuantityOnHand > 0)
+                   || await _context.InventoryItems.AnyAsync(item =>
+                       item.WarehouseId == warehouseId && item.Quantity > 0);
         }
 
         public async Task<bool> ExistsByIdAsync(Guid id)
         {
-            return await _context.Warehouses.AnyAsync(x => x.Id == id);
+            return await _context.Warehouses.AnyAsync(x => x.Id == id && !x.IsDeleted);
         }
 
         public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null)
@@ -36,12 +44,12 @@ namespace Inventory.Infrastructure.Repositories
 
         public async Task<Warehouse?> GetAsync(Guid id)
         {
-            return await _context.Warehouses.FindAsync(id);
+            return await _context.Warehouses.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
         }
 
         public async Task<List<Warehouse>> GetAllAsync()
         {
-            return await _context.Warehouses.ToListAsync();
+            return await _context.Warehouses.AsNoTracking().Where(x => !x.IsDeleted).ToListAsync();
         }
 
         public async Task UpdateAsync(Warehouse warehouse)

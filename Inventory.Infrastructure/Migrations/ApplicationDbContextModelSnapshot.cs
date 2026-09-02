@@ -56,6 +56,7 @@ namespace Inventory.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("UnitPrice")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("WarehouseId")
@@ -68,6 +69,317 @@ namespace Inventory.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("Inventories");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DateReceived")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ManufactureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("InventoryItems");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("InventoryItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("InventoryTransactions");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Permissions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000001"),
+                            Code = "product.read",
+                            Description = "Xem sản phẩm"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000002"),
+                            Code = "product.create",
+                            Description = "Tạo sản phẩm"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000003"),
+                            Code = "product.update",
+                            Description = "Cập nhật sản phẩm"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000004"),
+                            Code = "product.delete",
+                            Description = "Xóa sản phẩm"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000005"),
+                            Code = "warehouse.read",
+                            Description = "Xem kho hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000006"),
+                            Code = "warehouse.create",
+                            Description = "Tạo kho hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000007"),
+                            Code = "warehouse.update",
+                            Description = "Cập nhật kho hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000008"),
+                            Code = "warehouse.delete",
+                            Description = "Xóa kho hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000009"),
+                            Code = "supplier.read",
+                            Description = "Xem nhà cung cấp"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000010"),
+                            Code = "supplier.create",
+                            Description = "Tạo nhà cung cấp"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000011"),
+                            Code = "supplier.update",
+                            Description = "Cập nhật nhà cung cấp"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000012"),
+                            Code = "supplier.delete",
+                            Description = "Xóa nhà cung cấp"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000013"),
+                            Code = "inventory.read",
+                            Description = "Xem tồn kho"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000014"),
+                            Code = "inventory.receive",
+                            Description = "Nhập hàng vào kho"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000015"),
+                            Code = "inventory.issue",
+                            Description = "Xuất hàng khỏi kho"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000016"),
+                            Code = "inventory.transfer",
+                            Description = "Chuyển hàng giữa các kho"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000017"),
+                            Code = "inventory.adjust",
+                            Description = "Điều chỉnh tồn kho"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000018"),
+                            Code = "user.read",
+                            Description = "Xem người dùng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000019"),
+                            Code = "user.manage",
+                            Description = "Quản lý người dùng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000020"),
+                            Code = "role.read",
+                            Description = "Xem vai trò"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000021"),
+                            Code = "role.manage",
+                            Description = "Quản lý vai trò và phân quyền"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000022"),
+                            Code = "permission.read",
+                            Description = "Xem danh mục quyền"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000023"),
+                            Code = "audit.read",
+                            Description = "Xem lịch sử kiểm toán"
+                        });
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BrandId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CategoryName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImgUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LotNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Origin")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Size")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrder", b =>
@@ -87,6 +399,7 @@ namespace Inventory.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal?>("Freight")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ReceivedTo")
@@ -104,15 +417,16 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<string>("SupplierId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal?>("TotalPrice")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("TotalWeight")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("TotalWeight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Type")
                         .HasColumnType("nvarchar(max)");
@@ -156,19 +470,306 @@ namespace Inventory.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
 
                     b.HasIndex("PurchanseOrderId");
 
                     b.ToTable("PurchanseOrdersDetails");
                 });
 
+            modelBuilder.Entity("Inventory.Domain.Entities.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000001"),
+                            Description = "Quản trị toàn bộ hệ thống",
+                            Name = "Admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000002"),
+                            Description = "Quản lý hoạt động kho và dữ liệu nghiệp vụ",
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000003"),
+                            Description = "Nhân viên thực hiện các nghiệp vụ kho",
+                            Name = "Staff"
+                        });
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000001")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000002")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000004")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000005")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000006")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000007")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000008")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000009")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000010")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000011")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000012")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000013")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000015")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000016")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000017")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000018")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000019")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000020")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000021")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000022")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000023")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000001")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000002")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000005")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000006")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000007")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000009")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000010")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000011")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000013")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000015")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000016")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000017")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000023")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000001")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000005")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000009")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000013")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000015")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000016")
+                        });
+                });
+
             modelBuilder.Entity("Inventory.Domain.Entities.Supplier", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -176,7 +777,7 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ContactPerson")
                         .IsRequired()
@@ -185,6 +786,11 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -196,7 +802,60 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RefreshTokenExpiryTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.UserRole", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.Warehouse", b =>
@@ -209,13 +868,20 @@ namespace Inventory.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("Capacity")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsMain")
                         .HasColumnType("bit");
@@ -230,87 +896,15 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.ToTable("Warehouses");
-                });
-
-            modelBuilder.Entity("Inventory.Domain.Entity.Product", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BrandId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CategoryName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImgUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LotNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Origin")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Size")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<double>("Weight")
-                        .HasColumnType("float");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Products");
-                });
-
-            modelBuilder.Entity("Inventory.Domain.Entitys.User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("RefreshTokenExpiryTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
                 {
-                    b.HasOne("Inventory.Domain.Entity.Product", "Product")
+                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -327,18 +921,140 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.InventoryItem", "InventoryItem")
+                        .WithMany()
+                        .HasForeignKey("InventoryItemId");
+
+                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.Supplier", "Supplier")
+                        .WithMany("Products")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Supplier");
+                });
+
             modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrderDetail", b =>
                 {
-                    b.HasOne("Inventory.Domain.Entities.PurchanseOrder", null)
+                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.PurchanseOrder", "PurchanseOrder")
                         .WithMany("OrderDetails")
                         .HasForeignKey("PurchanseOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("PurchanseOrder");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.Permission", "Permission")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.Role", "Role")
+                        .WithMany("RolePermissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.UserRole", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.User", null)
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Permission", b =>
+                {
+                    b.Navigation("RolePermissions");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrder", b =>
                 {
                     b.Navigation("OrderDetails");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("RolePermissions");
+
+                    b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Supplier", b =>
+                {
+                    b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.User", b =>
+                {
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

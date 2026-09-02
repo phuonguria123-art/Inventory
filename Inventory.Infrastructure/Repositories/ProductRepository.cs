@@ -42,10 +42,22 @@ namespace Inventory.Infrastructure.Repository
 
         public async Task<List<Product>> GetAllAsync()
         {
-            return await _context.Products.ToListAsync();
+            return await _context.Products.AsNoTracking().ToListAsync();
         }
 
-        public async Task<Product> GetByIdAsync(Guid id)
+        public async Task<(List<Product> Items, int TotalCount)> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var query = _context.Products.AsNoTracking().OrderBy(product => product.Name);
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
+        public async Task<Product?> GetByIdAsync(Guid id)
         {
             return await _context.Products.FindAsync(id);
         }

@@ -9,11 +9,12 @@ namespace Inventory.Application.Warehouses.DTOs
     public class UpdateWarehouseDto
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
-        public string Code { get; set; }
-        public string Phone { get; set; }
-        public string Address { get; set; }
-        public string Description { get; set; }
+        public required string Name { get; set; }
+        public required string Code { get; set; }
+        public required string Phone { get; set; }
+        public required string Address { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public decimal Capacity { get; set; }
         public bool IsMain { get; set; }
     }
 }

@@ -17,7 +17,6 @@ namespace Inventory.Infrastructure.Repositories
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
         }
-
         public async Task<User?> GetUserAsync(string username)
         {
             return await _context.Users
@@ -25,7 +24,7 @@ namespace Inventory.Infrastructure.Repositories
                 .ThenInclude(x => x.Role)
                 .ThenInclude(x => x.RolePermissions)
                 .ThenInclude(x => x.Permission)
-                .FirstOrDefaultAsync(x => x.Username == username);
+                .FirstOrDefaultAsync(x => x.Username == username.Trim());
         }
         public async Task<User?> GetUserByIdAsync(Guid id)
         {
@@ -39,8 +38,10 @@ namespace Inventory.Infrastructure.Repositories
 
         public Task<bool> ExistByNameAsync(string username)
         {
-            return _context.Users.AnyAsync(x => x.Username == username);
+            return _context.Users.AnyAsync(x => x.Username == username.Trim());
         }
+        public Task<bool> ExistByEmail(string email)
+        { return _context.Users.AnyAsync(x => x.Email == email.Trim().ToLower()); }
 
         public async Task UpdateAsync(User user)
         {
@@ -53,6 +54,14 @@ namespace Inventory.Infrastructure.Repositories
                 .Include(user => user.UserRoles)
                 .ThenInclude(userRole => userRole.Role)
                 .FirstOrDefaultAsync(user => user.Id == userId);
+        }
+        public async Task<List<User>> GetListUser()
+        {
+            return await _context.Users
+                .AsNoTracking()
+                .Include(x => x.UserRoles)
+                .ThenInclude(x => x.Role)
+                .ToListAsync();
         }
 
     }
