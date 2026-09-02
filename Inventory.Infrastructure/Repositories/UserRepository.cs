@@ -12,57 +12,31 @@ namespace Inventory.Infrastructure.Repositories
 {
     public class UserRepository(ApplicationDbContext _context) : IUserRepository
     {
-        public async Task CreateAsync(User user)
+        public async Task Create(User user)
         {
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
         }
-        public async Task<User?> GetUserAsync(string username)
+
+        public async Task<User> GetUser(string username)
         {
-            return await _context.Users
-                .Include(x => x.UserRoles)
-                .ThenInclude(x => x.Role)
-                .ThenInclude(x => x.RolePermissions)
-                .ThenInclude(x => x.Permission)
-                .FirstOrDefaultAsync(x => x.Username == username.Trim());
-        }
-        public async Task<User?> GetUserByIdAsync(Guid id)
-        {
-            return await _context.Users
-       .Include(x => x.UserRoles)
-           .ThenInclude(x => x.Role)
-               .ThenInclude(x => x.RolePermissions)
-                   .ThenInclude(x => x.Permission)
-       .FirstOrDefaultAsync(x => x.Id == id);
+            return await _context.Users.FirstOrDefaultAsync(x => x.Username == username);
         }
 
-        public Task<bool> ExistByNameAsync(string username)
+        public async Task<User> GetUserById(Guid id)
         {
-            return _context.Users.AnyAsync(x => x.Username == username.Trim());
+            return await _context.Users.FindAsync(id);
         }
-        public Task<bool> ExistByEmail(string email)
-        { return _context.Users.AnyAsync(x => x.Email == email.Trim().ToLower()); }
 
-        public async Task UpdateAsync(User user)
+        public Task<bool> GetUserByUsername(string username)
+        {
+            return _context.Users.AnyAsync(x => x.Username == username);
+        }
+
+        public async Task Update(User user)
         {
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
-        public async Task<User?> GetUserWithRolesAsync(Guid userId)
-        {
-            return await _context.Users
-                .Include(user => user.UserRoles)
-                .ThenInclude(userRole => userRole.Role)
-                .FirstOrDefaultAsync(user => user.Id == userId);
-        }
-        public async Task<List<User>> GetListUser()
-        {
-            return await _context.Users
-                .AsNoTracking()
-                .Include(x => x.UserRoles)
-                .ThenInclude(x => x.Role)
-                .ToListAsync();
-        }
-
     }
 }
