@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Inventory.Application.Inventory.Dto;
 using Inventory.Application.Products.DTOs;
 using Inventory.Application.PurchaseOrders.Dto;
 using Inventory.Application.Suppliers.Dto;
@@ -43,6 +44,17 @@ namespace Inventory.Application.Mappings
                     destination => destination.Permissions,
                     options => options.MapFrom(source =>
                         source.RolePermissions.Select(rolePermission => rolePermission.Permission)));
+
+            CreateMap<Inventories, InventoryDto>()
+                .ForMember(destination => destination.WarehouseCode,
+                    options => options.MapFrom(source => source.Warehouse.Code))
+                .ForMember(destination => destination.WarehouseName,
+                    options => options.MapFrom(source => source.Warehouse.Name))
+                .ForMember(destination => destination.ProductCode,
+                    options => options.MapFrom(source => source.Product.Code))
+                .ForMember(destination => destination.ProductName,
+                    options => options.MapFrom(source => source.Product.Name));
+            CreateMap<InventoryTransaction, InventoryTransactionDto>();
             //  CreateMap<Product, ProductDto>()
             //.ForMember(
             //    dest => dest.ProductName,

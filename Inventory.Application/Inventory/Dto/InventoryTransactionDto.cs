@@ -1,11 +1,13 @@
-﻿using System;
+﻿using Inventory.Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-using Inventory.Domain.Enums;
-
-namespace Inventory.Domain.Entities
+namespace Inventory.Application.Inventory.Dto
 {
-    //Lịch sử audit cho chuyển động kho
-    public class InventoryTransaction
+    public class InventoryTransactionDto
     {
         public Guid Id { get; set; }
 
@@ -19,10 +21,5 @@ namespace Inventory.Domain.Entities
         public string? Notes { get; set; }
         public DateTime TransactionDate { get; set; }
         public Guid CreatedByUserId { get; set; }
-
-        public virtual Warehouse Warehouse { get; set; } = null!;
-        public virtual Product Product { get; set; } = null!;
-        public virtual InventoryItem? InventoryItem { get; set; }
-        public virtual User CreatedByUser { get; set; } = null!;
     }
 }

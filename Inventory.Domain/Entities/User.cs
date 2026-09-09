@@ -11,5 +11,7 @@ namespace Inventory.Domain.Entities
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
         public ICollection<UserRole> UserRoles { get; set; } = [];
+        public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = [];
+        public ICollection<InventoryReservation> InventoryReservations { get; set; } = [];
     }
 }

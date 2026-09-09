@@ -2,6 +2,7 @@ using AutoMapper;
 using Inventory.Api.Authorization;
 using Inventory.Application.Authorization;
 using Inventory.Application.Interfaces;
+using Inventory.Application.Inventory;
 using Inventory.Application.Mappings;
 using Inventory.Application.Products.Services;
 using Inventory.Application.Users;
@@ -54,6 +55,8 @@ namespace Inventory.Api
                     builder.Configuration.GetConnectionString("DBConnection")));
 
             builder.Services.AddScoped<IProductService, ProductService>();
+            builder.Services.AddScoped<IInventoryService, InventoryService>();
+            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

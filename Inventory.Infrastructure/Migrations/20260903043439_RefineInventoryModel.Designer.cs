@@ -4,6 +4,7 @@ using Inventory.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inventory.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260903043439_RefineInventoryModel")]
+    partial class RefineInventoryModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -113,61 +116,6 @@ namespace Inventory.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("InventoryItems");
-                });
-
-            modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("InventoryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reference")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("Reference");
-
-                    b.HasIndex("InventoryId", "Reference")
-                        .IsUnique()
-                        .HasFilter("[Status] = 'Active'");
-
-                    b.HasIndex("InventoryId", "Status");
-
-                    b.ToTable("InventoryReservations", t =>
-                        {
-                            t.HasCheckConstraint("CK_InventoryReservations_ExpiresAt", "[ExpiresAt] IS NULL OR [ExpiresAt] > [CreatedAt]");
-
-                            t.HasCheckConstraint("CK_InventoryReservations_Quantity", "[Quantity] > 0");
-
-                            t.HasCheckConstraint("CK_InventoryReservations_Reference", "LEN(LTRIM(RTRIM([Reference]))) > 0");
-                        });
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryTransaction", b =>
@@ -1002,25 +950,6 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
-                {
-                    b.HasOne("Inventory.Domain.Entities.User", "CreatedByUser")
-                        .WithMany("InventoryReservations")
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Inventory.Domain.Entities.Inventories", "Inventory")
-                        .WithMany("Reservations")
-                        .HasForeignKey("InventoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedByUser");
-
-                    b.Navigation("Inventory");
-                });
-
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryTransaction", b =>
                 {
                     b.HasOne("Inventory.Domain.Entities.User", "CreatedByUser")
@@ -1120,11 +1049,6 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
-                {
-                    b.Navigation("Reservations");
-                });
-
             modelBuilder.Entity("Inventory.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
@@ -1149,8 +1073,6 @@ namespace Inventory.Infrastructure.Migrations
 
             modelBuilder.Entity("Inventory.Domain.Entities.User", b =>
                 {
-                    b.Navigation("InventoryReservations");
-
                     b.Navigation("InventoryTransactions");
 
                     b.Navigation("UserRoles");

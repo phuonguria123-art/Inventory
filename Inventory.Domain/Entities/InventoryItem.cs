@@ -13,8 +13,8 @@ namespace Inventory.Domain.Entities
         public int Quantity { get; set; }
         public decimal UnitCost { get; set; }
         public string BatchNumber { get; set; } = null!;
-        public DateTime ManufactureDate { get; set; }
-        public DateTime ExpiryDate { get; set; }
+        public DateTime? ManufactureDate { get; set; }
+        public DateTime? ExpiryDate { get; set; }
         public DateTime DateReceived { get; set; }
         public string Location { get; set; } = null!;
 

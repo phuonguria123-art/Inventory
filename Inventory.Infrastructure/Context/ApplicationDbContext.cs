@@ -20,6 +20,7 @@ namespace Inventory.Infrastructure.Context
         public DbSet<Inventories> Inventories { get; set; }
         public DbSet<InventoryItem> InventoryItems { get; set; }
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
+        public DbSet<InventoryReservation> InventoryReservations { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<PurchanseOrder> PurchanseOrders { get; set; }
         public DbSet<PurchanseOrderDetail> PurchanseOrdersDetails { get; set; }
@@ -60,11 +61,114 @@ namespace Inventory.Infrastructure.Context
                 .HasDefaultValue(true);
 
             modelBuilder.Entity<Inventories>()
-                .Property(inventory => inventory.UnitPrice)
-                .HasPrecision(18, 2);
+                .HasIndex(inventory => new { inventory.WarehouseId, inventory.ProductId })
+                .IsUnique();
+            modelBuilder.Entity<Inventories>()
+                .HasOne(inventory => inventory.Warehouse)
+                .WithMany()
+                .HasForeignKey(inventory => inventory.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Inventories>()
+                .HasOne(inventory => inventory.Product)
+                .WithMany()
+                .HasForeignKey(inventory => inventory.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Inventories>()
+                .ToTable(table =>
+                {
+                    table.HasCheckConstraint("CK_Inventories_QuantityOnHand", "[QuantityOnHand] >= 0");
+                    table.HasCheckConstraint("CK_Inventories_ReservedQuantity", "[ReservedQuantity] >= 0 AND [ReservedQuantity] <= [QuantityOnHand]");
+                });
+
             modelBuilder.Entity<InventoryItem>()
                 .Property(item => item.UnitCost)
                 .HasPrecision(18, 2);
+            modelBuilder.Entity<InventoryItem>()
+                .HasOne(item => item.Warehouse)
+                .WithMany()
+                .HasForeignKey(item => item.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryItem>()
+                .HasOne(item => item.Product)
+                .WithMany()
+                .HasForeignKey(item => item.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<InventoryTransaction>()
+                .Property(transaction => transaction.TransactionType)
+                .HasConversion<string>()
+                .HasMaxLength(32);
+            modelBuilder.Entity<InventoryTransaction>()
+                .Property(transaction => transaction.Reference)
+                .HasMaxLength(100);
+            modelBuilder.Entity<InventoryTransaction>()
+                .HasIndex(transaction => transaction.Reference);
+            modelBuilder.Entity<InventoryTransaction>()
+                .ToTable(table => table.HasCheckConstraint(
+                    "CK_InventoryTransactions_Quantity",
+                    "[Quantity] > 0"));
+            modelBuilder.Entity<InventoryTransaction>()
+                .HasOne(transaction => transaction.Warehouse)
+                .WithMany()
+                .HasForeignKey(transaction => transaction.WarehouseId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryTransaction>()
+                .HasOne(transaction => transaction.Product)
+                .WithMany()
+                .HasForeignKey(transaction => transaction.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryTransaction>()
+                .HasOne(transaction => transaction.InventoryItem)
+                .WithMany()
+                .HasForeignKey(transaction => transaction.InventoryItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryTransaction>()
+                .HasOne(transaction => transaction.CreatedByUser)
+                .WithMany(user => user.InventoryTransactions)
+                .HasForeignKey(transaction => transaction.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<InventoryReservation>()
+                .Property(reservation => reservation.Reference)
+                .HasMaxLength(100)
+                .IsRequired();
+            modelBuilder.Entity<InventoryReservation>()
+                .Property(reservation => reservation.Status)
+                .HasConversion<string>()
+                .HasMaxLength(16);
+            modelBuilder.Entity<InventoryReservation>()
+                .HasIndex(reservation => reservation.Reference);
+            modelBuilder.Entity<InventoryReservation>()
+                .HasIndex(reservation => new { reservation.InventoryId, reservation.Status });
+            modelBuilder.Entity<InventoryReservation>()
+                .HasIndex(reservation => new { reservation.InventoryId, reservation.Reference })
+                .IsUnique()
+                .HasFilter("[Status] = 'Active'");
+            modelBuilder.Entity<InventoryReservation>()
+                .HasIndex(reservation => reservation.ExpiresAt);
+            modelBuilder.Entity<InventoryReservation>()
+                .HasOne(reservation => reservation.Inventory)
+                .WithMany(inventory => inventory.Reservations)
+                .HasForeignKey(reservation => reservation.InventoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryReservation>()
+                .HasOne(reservation => reservation.CreatedByUser)
+                .WithMany(user => user.InventoryReservations)
+                .HasForeignKey(reservation => reservation.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<InventoryReservation>()
+                .ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_InventoryReservations_Quantity",
+                        "[Quantity] > 0");
+                    table.HasCheckConstraint(
+                        "CK_InventoryReservations_Reference",
+                        "LEN(LTRIM(RTRIM([Reference]))) > 0");
+                    table.HasCheckConstraint(
+                        "CK_InventoryReservations_ExpiresAt",
+                        "[ExpiresAt] IS NULL OR [ExpiresAt] > [CreatedAt]");
+                });
             modelBuilder.Entity<PurchanseOrder>()
                 .Property(order => order.Freight)
                 .HasPrecision(18, 2);
