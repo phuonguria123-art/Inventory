@@ -83,16 +83,16 @@ namespace Inventory.Infrastructure.Context
             modelBuilder.Entity<InventoryItem>()
                 .Property(item => item.UnitCost)
                 .HasPrecision(18, 2);
-            modelBuilder.Entity<InventoryItem>()
-                .HasOne(item => item.Warehouse)
-                .WithMany()
-                .HasForeignKey(item => item.WarehouseId)
-                .OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<InventoryItem>()
-                .HasOne(item => item.Product)
-                .WithMany()
-                .HasForeignKey(item => item.ProductId)
-                .OnDelete(DeleteBehavior.Restrict);
+            //modelBuilder.Entity<InventoryItem>()
+            //    .HasOne(item => item.Warehouse)
+            //    .WithMany()
+            //    .HasForeignKey(item => item.WarehouseId)
+            //    .OnDelete(DeleteBehavior.Restrict);
+            //modelBuilder.Entity<InventoryItem>()
+            //    .HasOne(item => item.Product)
+            //    .WithMany()
+            //    .HasForeignKey(item => item.ProductId)
+            //    .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<InventoryTransaction>()
                 .Property(transaction => transaction.TransactionType)

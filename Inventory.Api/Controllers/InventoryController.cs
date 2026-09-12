@@ -1,6 +1,8 @@
 ﻿using Inventory.Application.Authorization;
 using Inventory.Application.Inventory;
 using Inventory.Application.Inventory.Dto;
+using Inventory.Application.Inventory.Dto.Issue;
+using Inventory.Application.Inventory.Dto.Receive;
 using Inventory.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +58,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     }
     [Authorize(Policy = PermissionCodes.InventoryReceive)]
     [HttpPost("receive")]
-    public async Task<ActionResult<InventoryDto>> Receive(InventoryMovementRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> Receive(ReceiveInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
@@ -66,7 +68,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
 
     [Authorize(Policy = PermissionCodes.InventoryIssue)]
     [HttpPost("issue")]
-    public async Task<ActionResult<InventoryDto>> Issue(InventoryMovementRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> Issue(IssueInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();

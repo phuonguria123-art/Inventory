@@ -28,6 +28,10 @@ namespace Inventory.Infrastructure.Repositories
             await _context.InventoryReservations.AddAsync(reservation);
         }
 
+        public async Task AddInventoryItem(InventoryItem item)
+        {
+            await _context.InventoryItems.AddAsync(item);
+        }
         public async Task<(List<Inventories> listInventory, int totalCount)> GetAllAsync(
             int pageSize,
             int pageNumber,
@@ -114,20 +118,15 @@ namespace Inventory.Infrastructure.Repositories
                 .FirstOrDefaultAsync(x =>
                     x.WarehouseId == warehouseId && x.ProductId == productId);
         }
-
-        public async Task<bool> TransactionExistsAsync(
+        public async Task<bool> TransactionReferenceExistsAsync(
             Guid warehouseId,
-            Guid productId,
-            int quantity,
             InventoryTransactionType transactionType,
             string reference)
         {
-            return await _context.InventoryTransactions.AnyAsync(x =>
-                x.WarehouseId == warehouseId &&
-                x.ProductId == productId &&
-                x.Quantity == quantity &&
-                x.TransactionType == transactionType &&
-                x.Reference == reference);
+            return await _context.InventoryTransactions.AnyAsync(transaction =>
+                transaction.WarehouseId == warehouseId &&
+                transaction.TransactionType == transactionType &&
+                transaction.Reference == reference);
         }
 
         public async Task<InventoryReservation?> GetActiveReservationAsync(Guid inventoryId, string reference)
@@ -139,7 +138,7 @@ namespace Inventory.Infrastructure.Repositories
         }
         public async Task<List<InventoryReservation>> GetAllReservationExpired()
         {
-            return await _context.InventoryReservations.Where( x => x.ExpiresAt >= DateTime.UtcNow ).ToListAsync();
+            return await _context.InventoryReservations.Where(x => x.ExpiresAt >= DateTime.UtcNow).ToListAsync();
         }
         public async Task<(List<InventoryTransaction> listInventoryTransaction, int totalCount)> GetAllTransactionAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
         {
@@ -216,6 +215,18 @@ namespace Inventory.Infrastructure.Repositories
         {
             _context.InventoryReservations.Update(reservation);
             await _context.SaveChangesAsync();
+        }
+        public async Task UpdateInventoryItem(InventoryItem inventoryItem)
+        {
+            _context.InventoryItems.Update(inventoryItem);
+            await _context.SaveChangesAsync();
+        }
+        public async Task<InventoryItem?> GetInventoryItemAsync(Guid inventoryId, string batchNumber)
+        {
+            return await _context.InventoryItems
+                .FirstOrDefaultAsync(item =>
+                    item.InventoryId == inventoryId &&
+                    item.BatchNumber == batchNumber);
         }
     }
 }

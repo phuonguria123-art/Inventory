@@ -6,10 +6,7 @@ namespace Inventory.Domain.Entities
     public class InventoryItem
     {
         public Guid Id { get; set; }
-
-        public Guid WarehouseId { get; set; }
-        public Guid ProductId { get; set; }
-
+        public Guid InventoryId { get; set; }
         public int Quantity { get; set; }
         public decimal UnitCost { get; set; }
         public string BatchNumber { get; set; } = null!;
@@ -20,5 +17,6 @@ namespace Inventory.Domain.Entities
 
         public virtual Warehouse Warehouse { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;
+        public virtual Inventories Inventory { get; set; } = null!;
     }
 }

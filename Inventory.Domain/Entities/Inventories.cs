@@ -25,5 +25,6 @@ namespace Inventory.Domain.Entities
         public virtual Warehouse Warehouse { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;
         public ICollection<InventoryReservation> Reservations { get; set; } = [];
+        public ICollection<InventoryItem> InventoryItems { get; set; } = [];
     }
 }

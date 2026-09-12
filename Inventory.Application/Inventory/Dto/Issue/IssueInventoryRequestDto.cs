@@ -6,17 +6,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Inventory.Application.Inventory.Dto
+namespace Inventory.Application.Inventory.Dto.Issue
 {
-    public sealed class InventoryTransferRequestDto
+    public class IssueInventoryRequestDto
     {
-        public Guid WarehouseFromId { get; set; }
-        public Guid WarehouseToId { get;set; }
+        public Guid WarehouseId { get; set; }
         [MaxLength(100)]
         public string? Reference { get; set; }
 
         [MaxLength(500)]
         public string? Notes { get; set; }
-        public List<ReceiveProductDto> Products { get; set; } = [];
+        public List<IssueProductDto> Products { get; set; } = [];
     }
 }

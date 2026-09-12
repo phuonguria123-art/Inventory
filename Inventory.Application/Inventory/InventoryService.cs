@@ -1,6 +1,8 @@
 using AutoMapper;
 using Inventory.Application.Common.Models;
 using Inventory.Application.Inventory.Dto;
+using Inventory.Application.Inventory.Dto.Issue;
+using Inventory.Application.Inventory.Dto.Receive;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
 using Inventory.Domain.Exceptions;
@@ -13,6 +15,7 @@ public sealed class InventoryService(
     IProductRepository productRepository,
     IWarehouseRepository warehouseRepository,
     IMapper mapper
+
     ) : IInventoryService
 {
     public async Task<InventoryDto> GetAsync(Guid warehouseId, Guid productId)
@@ -83,70 +86,190 @@ public sealed class InventoryService(
     }
     public async Task TransferAsync(InventoryTransferRequestDto request, Guid userId)
     {
-        if (request.ProductId == Guid.Empty ||
-            request.WarehouseFromId == Guid.Empty ||
-            request.WarehouseToId == Guid.Empty)
-        {
-            throw new ValidationException("Sản phẩm, kho nguồn và kho đích là bắt buộc.");
-        }
+        if (request is null)
+            throw new ValidationException("Thông tin phiếu chuyển kho là bắt buộc.");
 
-        if (request.WarehouseToId == request.WarehouseFromId)
-            throw new ValidationException("Kho nguồn và kho đích phải khác nhau.");
-        if (request.Quantity <= 0)
-            throw new ValidationException("Số lượng chuyển phải lớn hơn 0.");
+        ValidateTransferRequest(request, userId);
 
-        if (!await productRepository.ExistByIdAsync(request.ProductId))
-            throw new NotFoundException("Sản phẩm không tồn tại.");
         if (!await warehouseRepository.ExistsByIdAsync(request.WarehouseFromId))
             throw new NotFoundException("Kho nguồn không tồn tại.");
         if (!await warehouseRepository.ExistsByIdAsync(request.WarehouseToId))
             throw new NotFoundException("Kho đích không tồn tại.");
+        var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
 
         var reference = NormalizeOrCreateReference(request.Reference);
+
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
-            var inventoryFrom = await inventoryRepository.GetAsync(
-                request.WarehouseFromId,
-                request.ProductId);
-            if (inventoryFrom is null)
-                throw new NotFoundException("Kho nguồn chưa có tồn kho của sản phẩm này.");
-            if (inventoryFrom.AvailableQuantity < request.Quantity)
-                throw new ConflictException("Số lượng khả dụng tại kho nguồn không đủ để chuyển.");
-
-            var inventoryTo = await inventoryRepository.GetAsync(
-                request.WarehouseToId,
-                request.ProductId);
-            if (inventoryTo is null)
+            if (hasClientReference &&
+                     await inventoryRepository.TransactionReferenceExistsAsync(
+                         request.WarehouseFromId,
+                         InventoryTransactionType.TransferOut,
+                         reference))
             {
-                inventoryTo = CreateInventory(request.WarehouseToId, request.ProductId);
-                await inventoryRepository.AddAsync(inventoryTo);
+                throw new ConflictException("Phiếu chuyển kho này đã được thực hiện trước đó.");
             }
+            foreach (var product in request.Products)
+            {
+                if (product.ProductId == Guid.Empty) { throw new ValidationException("Mã sản phảm là bắt buộc"); }
+                if (!await productRepository.ExistByIdAsync(product.ProductId))
+                    throw new NotFoundException("Sản phẩm không tồn tại.");
+                var inventoryFrom = await inventoryRepository.GetAsync(
+                    request.WarehouseFromId,
+                    product.ProductId);
+                if (inventoryFrom is null)
+                    throw new NotFoundException("Kho nguồn chưa có tồn kho của sản phẩm này.");
+                var totalProductRequest = product.Lots.Sum(l => l.Quantity);
+                if (inventoryFrom.AvailableQuantity < totalProductRequest)
+                    throw new ConflictException("Số lượng khả dụng tại kho nguồn không đủ để chuyển.");
 
-            inventoryFrom.QuantityOnHand -= request.Quantity;
-            inventoryFrom.LastUpdate = DateTime.UtcNow;
+                var inventoryTo = await inventoryRepository.GetAsync(
+                   request.WarehouseToId,
+                   product.ProductId);
+                if (inventoryTo is null)
+                {
+                    inventoryTo = CreateInventory(request.WarehouseToId, product.ProductId);
+                    await inventoryRepository.AddAsync(inventoryTo);
+                }
 
-            inventoryTo.QuantityOnHand = checked(inventoryTo.QuantityOnHand + request.Quantity);
-            inventoryTo.LastUpdate = DateTime.UtcNow;
 
-            await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                request.WarehouseFromId,
-                request.ProductId,
-                userId,
-                InventoryTransactionType.TransferOut,
-                request.Quantity,
-                reference,
-                request.Notes));
+                foreach (var lotRequest in product.Lots)
+                {
+                    var batchNumber = lotRequest.BatchNumber.Trim();
+                    var lotFrom = await inventoryRepository.GetInventoryItemAsync(inventoryFrom.Id, batchNumber);
+                    if (lotFrom is null)
+                    {
+                        throw new NotFoundException("Kho nguồn không tồn tại lô hàng này");
+                    }
+                    if (lotFrom.Quantity < lotRequest.Quantity)
+                    {
+                        throw new ConflictException("Số lượng khả dụng trong lô tại kho nguồn không đủ để chuyển.");
+                    }
+                    lotFrom.Quantity -= lotRequest.Quantity;
 
-            await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                request.WarehouseToId,
-                request.ProductId,
-                userId,
-                InventoryTransactionType.TransferIn,
-                request.Quantity,
-                reference,
-                request.Notes));
+                    var lotTo = await inventoryRepository.GetInventoryItemAsync(inventoryTo.Id, batchNumber);
+                    if (lotTo is null)
+                    {
+                        lotTo = CreateTransferredInventoryItem(
+    lotFrom,
+    inventoryTo.Id,
+    lotRequest.Quantity,
+    lotRequest.Location);
+                        await inventoryRepository.AddInventoryItem(lotTo);
+                    }
+                    else
+                    {
+                        if (lotTo.UnitCost != lotFrom.UnitCost ||
+    lotTo.ManufactureDate != lotFrom.ManufactureDate ||
+    lotTo.ExpiryDate != lotFrom.ExpiryDate)
+                        {
+                            throw new ConflictException(
+                                $"Lô '{lotFrom.BatchNumber}' tại kho đích có thông tin không khớp với kho nguồn.");
+                        }
+                        lotTo.Quantity = checked(
+                            lotTo.Quantity + lotRequest.Quantity);
+                    }
+                    await inventoryRepository.AddTransactionAsync(CreateTransaction(
+                  request.WarehouseFromId,
+                  product.ProductId,
+                  userId,
+                  InventoryTransactionType.TransferOut,
+                  lotRequest.Quantity,
+                  reference,
+                  request.Notes,
+                  lotFrom.Id));
+
+                    await inventoryRepository.AddTransactionAsync(CreateTransaction(
+                        request.WarehouseToId,
+                        product.ProductId,
+                        userId,
+                        InventoryTransactionType.TransferIn,
+                        lotRequest.Quantity,
+                        reference,
+                        request.Notes,
+                        lotTo.Id));
+
+                }
+                inventoryFrom.QuantityOnHand -= totalProductRequest;
+                inventoryFrom.LastUpdate = DateTime.UtcNow;
+
+                inventoryTo.QuantityOnHand = checked(inventoryTo.QuantityOnHand + totalProductRequest);
+                inventoryTo.LastUpdate = DateTime.UtcNow;
+
+            }
         });
 
+    }
+    private static InventoryItem CreateTransferredInventoryItem(
+    InventoryItem sourceLot,
+    Guid destinationInventoryId,
+    int quantity,
+    string? destinationLocation) => new()
+    {
+        Id = Guid.NewGuid(),
+        InventoryId = destinationInventoryId,
+        BatchNumber = sourceLot.BatchNumber,
+        Quantity = quantity,
+        UnitCost = sourceLot.UnitCost,
+        ManufactureDate = sourceLot.ManufactureDate,
+        ExpiryDate = sourceLot.ExpiryDate,
+        DateReceived = DateTime.UtcNow,
+        Location = destinationLocation?.Trim() ?? string.Empty
+    };
+
+    private static void ValidateTransferRequest(
+        InventoryTransferRequestDto request,
+        Guid userId)
+    {
+        if (userId == Guid.Empty)
+            throw new ValidationException("Người thực hiện phiếu chuyển kho không hợp lệ.");
+        if (request.WarehouseFromId == Guid.Empty || request.WarehouseToId == Guid.Empty)
+            throw new ValidationException("Kho nguồn và kho đích là bắt buộc.");
+        if (request.WarehouseFromId == request.WarehouseToId)
+            throw new ValidationException("Kho nguồn và kho đích phải khác nhau.");
+        if (request.Products is null || request.Products.Count == 0)
+            throw new ValidationException("Phiếu chuyển kho phải có ít nhất một sản phẩm.");
+        if (request.Reference?.Trim().Length > 100)
+            throw new ValidationException("Mã tham chiếu không được vượt quá 100 ký tự.");
+        if (request.Notes?.Trim().Length > 500)
+            throw new ValidationException("Ghi chú không được vượt quá 500 ký tự.");
+
+        foreach (var product in request.Products)
+        {
+            if (product.ProductId == Guid.Empty)
+                throw new ValidationException("Sản phẩm trong phiếu chuyển kho không hợp lệ.");
+            if (product.Lots is null || product.Lots.Count == 0)
+                throw new ValidationException("Mỗi sản phẩm phải có ít nhất một lô cần chuyển.");
+
+            foreach (var lot in product.Lots)
+            {
+                if (string.IsNullOrWhiteSpace(lot.BatchNumber))
+                    throw new ValidationException("Mã lô là bắt buộc.");
+                if (lot.BatchNumber.Trim().Length > 100)
+                    throw new ValidationException("Mã lô không được vượt quá 100 ký tự.");
+                if (lot.Quantity <= 0)
+                    throw new ValidationException("Số lượng chuyển của lô phải lớn hơn 0.");
+            }
+
+            var duplicateLot = product.Lots
+                .GroupBy(lot => lot.BatchNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateLot is not null)
+            {
+                throw new ValidationException(
+                    $"Lô '{duplicateLot.Key}' bị lặp trong cùng một sản phẩm.");
+            }
+
+            var totalQuantity = product.Lots.Sum(lot => (long)lot.Quantity);
+            if (totalQuantity > int.MaxValue)
+                throw new ValidationException("Tổng số lượng chuyển của sản phẩm vượt quá giới hạn cho phép.");
+        }
+
+        var duplicateProduct = request.Products
+            .GroupBy(product => product.ProductId)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateProduct is not null)
+            throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu chuyển kho.");
     }
     //giữ hàng/hủy giữ hàng
     public async Task<InventoryDto> Reservation(InventoryReservationRequestDto request, Guid userId)
@@ -163,6 +286,7 @@ public sealed class InventoryService(
         await EnsureProductAndWarehouseExistAsync(request.ProductId, request.WarehouseId);
 
         Inventories? updatedInventory = null;
+        var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
             var inventory = await inventoryRepository.GetAsync(request.WarehouseId, request.ProductId);
@@ -226,132 +350,357 @@ public sealed class InventoryService(
         {
             reservation.Status = InventoryReservationStatus.Expired;
             var inventory = await inventoryRepository.GetById(reservation.InventoryId);
-            if(inventory is null)
+            if (inventory is null)
             {
                 throw new NotFoundException("Không tìm thấy thông tin tồn kho tương ứng với sản phẩm hết hạn giữ hàng");
-            }    
+            }
             inventory.ReservedQuantity -= reservation.Quantity;
             await inventoryRepository.UpdateRevationAsync(reservation);
             await inventoryRepository.UpdateAsync(inventory);
         }
     }
     //nhập kho
-    public async Task<InventoryDto> ReceiveAsync(
-        InventoryMovementRequestDto request,
+    public async Task<List<InventoryDto>> ReceiveAsync(
+        ReceiveInventoryRequestDto request,
         Guid userId)
     {
-        ValidateMovement(request.WarehouseId, request.ProductId, request.Quantity);
-        await EnsureProductAndWarehouseExistAsync(request.ProductId, request.WarehouseId);
-        // Chỉ kiểm tra idempotency khi client cung cấp mã tham chiếu nghiệp vụ.
-        var reference = request.Reference?.Trim();
-        if (!string.IsNullOrWhiteSpace(reference) &&
-            await inventoryRepository.TransactionExistsAsync(
-                request.WarehouseId,
-                request.ProductId,
-                request.Quantity,
-                InventoryTransactionType.Receipt,
-                reference))
-        {
-            throw new ConflictException("Nhiệm vụ này đã được thực hiện trước đó.");
-        }
+        ValidateReceiveRequest(request, userId);
 
-        Inventories? updatedInventory = null;
+        var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
+        var reference = NormalizeOrCreateReference(request.Reference);
+        var updatedInventories = new List<Inventories>();
+
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
-            var inventory = await inventoryRepository.GetAsync(request.WarehouseId, request.ProductId);
-            if (inventory is null)
+            // Một mã tham chiếu đại diện cho toàn bộ phiếu nhập. Nếu mã này đã có
+            // giao dịch nhập thì từ chối để tránh cộng tồn hai lần khi client gửi lại.
+            if (hasClientReference &&
+                await inventoryRepository.TransactionReferenceExistsAsync(
+                    request.WarehouseId,
+                    InventoryTransactionType.Receipt,
+                    reference))
             {
-                inventory = CreateInventory(request.WarehouseId, request.ProductId);
-                await inventoryRepository.AddAsync(inventory);
+                throw new ConflictException("Phiếu nhập này đã được thực hiện trước đó.");
             }
 
-            inventory.QuantityOnHand = checked(inventory.QuantityOnHand + request.Quantity);
-            inventory.LastUpdate = DateTime.UtcNow;
+            foreach (var product in request.Products)
+            {
+                await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
+                var inventory = await ExecuteProductAsync(
+                    request,
+                    product,
+                    userId,
+                    reference);
+
+                updatedInventories.Add(inventory);
+            }
+        });
+
+        return updatedInventories.Select(Map).ToList();
+    }
+
+    private async Task<Inventories> ExecuteProductAsync(
+        ReceiveInventoryRequestDto request,
+        ReceiveProductDto productRequest,
+        Guid userId,
+        string reference)
+    {
+        var inventory = await inventoryRepository.GetAsync(
+            request.WarehouseId,
+            productRequest.ProductId);
+
+        if (inventory is null)
+        {
+            inventory = CreateInventory(request.WarehouseId, productRequest.ProductId);
+            await inventoryRepository.AddAsync(inventory);
+        }
+
+        foreach (var lot in productRequest.Lots)
+        {
+            var batchNumber = lot.BatchNumber.Trim();
+            var inventoryItem = await inventoryRepository.GetInventoryItemAsync(
+                inventory.Id,
+                batchNumber);
+
+            if (inventoryItem is null)
+            {
+                inventoryItem = CreateInventoryItem(lot, inventory.Id, batchNumber);
+                await inventoryRepository.AddInventoryItem(inventoryItem);
+            }
+            else
+            {
+                EnsureLotMetadataMatches(inventoryItem, lot);
+                inventoryItem.Quantity = checked(inventoryItem.Quantity + lot.Quantity);
+            }
 
             await inventoryRepository.AddTransactionAsync(CreateTransaction(
                 request.WarehouseId,
-                request.ProductId,
+                productRequest.ProductId,
                 userId,
                 InventoryTransactionType.Receipt,
-                request.Quantity,
-                request.Reference,
-                request.Notes));
+                lot.Quantity,
+                reference,
+                request.Notes,
+                inventoryItem.Id));
+        }
 
-            updatedInventory = inventory;
-        });
+        var receivedQuantity = productRequest.Lots.Sum(lot => lot.Quantity);
+        inventory.QuantityOnHand = checked(inventory.QuantityOnHand + receivedQuantity);
+        inventory.LastUpdate = DateTime.UtcNow;
 
-        return Map(updatedInventory!);
+        return inventory;
+    }
+
+    private static InventoryItem CreateInventoryItem(
+        ReceiveLotDto receiveLotDto,
+        Guid inventoryId,
+        string batchNumber) => new()
+        {
+            Id = Guid.NewGuid(),
+            InventoryId = inventoryId,
+            Quantity = receiveLotDto.Quantity,
+            UnitCost = receiveLotDto.UnitCost,
+            BatchNumber = batchNumber,
+            ManufactureDate = receiveLotDto.ManufactureDate,
+            ExpiryDate = receiveLotDto.ExpiryDate,
+            DateReceived = DateTime.UtcNow,
+            Location = receiveLotDto.Location?.Trim() ?? string.Empty
+        };
+
+    private static void EnsureLotMetadataMatches(
+        InventoryItem inventoryItem,
+        ReceiveLotDto receiveLotDto)
+    {
+        if (inventoryItem.UnitCost != receiveLotDto.UnitCost ||
+            inventoryItem.ManufactureDate != receiveLotDto.ManufactureDate ||
+            inventoryItem.ExpiryDate != receiveLotDto.ExpiryDate)
+        {
+            throw new ConflictException(
+                $"Lô '{inventoryItem.BatchNumber}' đã tồn tại nhưng thông tin giá vốn, ngày sản xuất hoặc hạn sử dụng không khớp.");
+        }
+    }
+
+    private static void ValidateReceiveRequest(
+        ReceiveInventoryRequestDto request,
+        Guid userId)
+    {
+        if (request is null)
+            throw new ValidationException("Thông tin phiếu nhập là bắt buộc.");
+        if (request.WarehouseId == Guid.Empty)
+            throw new ValidationException("Kho nhập là bắt buộc.");
+        if (userId == Guid.Empty)
+            throw new ValidationException("Người thực hiện phiếu nhập không hợp lệ.");
+        if (request.PurchaseOrderId == Guid.Empty)
+            throw new ValidationException("Mã đơn mua không hợp lệ.");
+        if (request.Products is null || request.Products.Count == 0)
+            throw new ValidationException("Phiếu nhập phải có ít nhất một sản phẩm.");
+        if (request.Reference?.Trim().Length > 100)
+            throw new ValidationException("Mã tham chiếu không được vượt quá 100 ký tự.");
+        if (request.Notes?.Trim().Length > 500)
+            throw new ValidationException("Ghi chú không được vượt quá 500 ký tự.");
+
+        var duplicateProduct = request.Products
+            .GroupBy(product => product.ProductId)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateProduct is not null)
+            throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu nhập.");
+
+        foreach (var product in request.Products)
+        {
+            if (product.ProductId == Guid.Empty)
+                throw new ValidationException("Sản phẩm trong phiếu nhập không hợp lệ.");
+            if (product.Lots is null || product.Lots.Count == 0)
+                throw new ValidationException("Mỗi sản phẩm phải có ít nhất một lô.");
+
+            var duplicateBatch = product.Lots
+                .Where(lot => !string.IsNullOrWhiteSpace(lot.BatchNumber))
+                .GroupBy(lot => lot.BatchNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateBatch is not null)
+                throw new ValidationException(
+                    $"Mã lô '{duplicateBatch.Key}' bị lặp trong cùng một sản phẩm.");
+
+            foreach (var lot in product.Lots)
+            {
+                if (string.IsNullOrWhiteSpace(lot.BatchNumber))
+                    throw new ValidationException("Mã lô là bắt buộc.");
+                if (lot.BatchNumber.Trim().Length > 100)
+                    throw new ValidationException("Mã lô không được vượt quá 100 ký tự.");
+                if (lot.Quantity <= 0)
+                    throw new ValidationException("Số lượng của lô phải lớn hơn 0.");
+                if (lot.UnitCost < 0)
+                    throw new ValidationException("Giá vốn của lô không được âm.");
+                if (lot.ManufactureDate.HasValue &&
+                    lot.ExpiryDate.HasValue &&
+                    lot.ExpiryDate.Value < lot.ManufactureDate.Value)
+                {
+                    throw new ValidationException(
+                        "Hạn sử dụng của lô không được trước ngày sản xuất.");
+                }
+            }
+        }
+    }
+    private async Task ValidateIssueRequest(IssueInventoryRequestDto request,
+            Guid userId)
+    {
+        if (request.WarehouseId == Guid.Empty)
+            throw new ValidationException("Kho xuất là bắt buộc.");
+        if (userId == Guid.Empty)
+            throw new ValidationException("Người thực hiện là bắt buộc.");
+        if (request.Products is null || request.Products.Count == 0)
+            throw new ValidationException("Phiếu xuất phải có ít nhất một sản phẩm.");
+        if (request.Reference?.Trim().Length > 100)
+            throw new ValidationException("Mã tham chiếu không được vượt quá 100 ký tự.");
+        if (request.Notes?.Trim().Length > 500)
+            throw new ValidationException("Ghi chú không được vượt quá 500 ký tự.");
+        var duplicateProduct = request.Products
+                 .GroupBy(product => product.ProductId)
+                 .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateProduct is not null)
+            throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu xuất.");
+
+        foreach (var product in request.Products)
+        {
+
+            if (product.ProductId == Guid.Empty)
+                throw new ValidationException("Sản phẩm trong phiếu xuất không hợp lệ.");
+            if (product.Lots is null || product.Lots.Count == 0)
+                throw new ValidationException("Mỗi sản phẩm phải có ít nhất một lô.");
+            await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
+            var duplicateLot = product.Lots
+              .Where(lot => !string.IsNullOrWhiteSpace(lot.BatchNumber))
+                 .GroupBy(lot => lot.BatchNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+                 .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateLot is not null)
+                throw new ValidationException("Mỗi lô chỉ được xuất hiện một lần trong 1 sản phẩm.");
+
+            foreach (var lot in product.Lots)
+            {
+                if (string.IsNullOrWhiteSpace(lot.BatchNumber))
+                    throw new ValidationException("Mã lô là bắt buộc.");
+                if (lot.BatchNumber.Trim().Length > 100)
+                    throw new ValidationException("Mã lô không được vượt quá 100 ký tự.");
+                if (lot.Quantity <= 0)
+                    throw new ValidationException("Số lượng của lô phải lớn hơn 0.");
+            }
+        }
+    }
+    private async Task ValidateTransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType type, string? reference)
+    {
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            var isExists = await inventoryRepository.TransactionReferenceExistsAsync(warehouseId, type, reference);
+            if (isExists)
+            {
+                throw new ConflictException("Yêu cầu đã được thực hiện trước đó");
+            }
+        }
+
     }
     //xuất kho
-    public async Task<InventoryDto> IssueAsync(
-        InventoryMovementRequestDto request,
+    public async Task<List<InventoryDto>> IssueAsync(
+        IssueInventoryRequestDto request,
         Guid userId)
     {
-        ValidateMovement(request.WarehouseId, request.ProductId, request.Quantity);
-        await EnsureProductAndWarehouseExistAsync(request.ProductId, request.WarehouseId);
-        // Chỉ kiểm tra idempotency khi client cung cấp mã tham chiếu nghiệp vụ.
-        var reference = request.Reference?.Trim();
-        if (!string.IsNullOrWhiteSpace(reference) &&
-            await inventoryRepository.TransactionExistsAsync(
-                request.WarehouseId,
-                request.ProductId,
-                request.Quantity,
-                InventoryTransactionType.Issue,
-                reference))
-        {
-            throw new ConflictException("Nhiệm vụ này đã được thực hiện trước đó.");
-        }
-        Inventories? updatedInventory = null;
+        if (request is null)
+            throw new ValidationException("Thông tin phiếu xuất là bắt buộc.");
+
+        await ValidateIssueRequest(request, userId);
+        var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
+        var reference = NormalizeOrCreateReference(request.Reference);
+
+        var updatedInventories = new List<Inventories>();
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
-            var inventory = await inventoryRepository.GetAsync(request.WarehouseId, request.ProductId);
-            if (inventory is null)
-                throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
-
-            InventoryReservation? activeReservation = null;
-            if (!string.IsNullOrWhiteSpace(request.Reference))
+            if (hasClientReference)
             {
-                activeReservation = await inventoryRepository.GetActiveReservationAsync(
-                    inventory.Id,
-                    request.Reference.Trim());
+                await ValidateTransactionReferenceExistsAsync(
+                    request.WarehouseId,
+                    InventoryTransactionType.Issue,
+                    reference);
             }
 
-            if (activeReservation is not null)
+            foreach (var product in request.Products)
             {
-                if (activeReservation.ExpiresAt.HasValue && activeReservation.ExpiresAt.Value <= DateTime.UtcNow)
-                    throw new ConflictException("Lượt giữ hàng đã hết hạn.");
-                if (activeReservation.Quantity != request.Quantity)
-                    throw new ConflictException("Số lượng xuất phải bằng số lượng đang được giữ.");
-                if (inventory.QuantityOnHand < request.Quantity ||
-                    inventory.ReservedQuantity < request.Quantity)
+                InventoryReservation? activeReservation = null;
+                var inventory = await inventoryRepository.GetAsync(request.WarehouseId, product.ProductId);
+                if (inventory is null)
+                    throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
+                if (hasClientReference)
                 {
-                    throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
+                    activeReservation = await inventoryRepository.GetActiveReservationAsync(
+                        inventory.Id,
+                        reference);
                 }
 
-                inventory.ReservedQuantity -= request.Quantity;
-                activeReservation.Status = InventoryReservationStatus.Fulfilled;
+                var totalProductRequest = product.Lots.Sum(x => x.Quantity);
+
+                if (activeReservation is not null)
+                {
+                    if (activeReservation.ExpiresAt.HasValue &&
+                        activeReservation.ExpiresAt.Value <= DateTime.UtcNow)
+                    {
+                        throw new ConflictException("Lượt giữ hàng đã hết hạn.");
+                    }
+
+                    if (activeReservation.Quantity != totalProductRequest)
+                        throw new ConflictException("Số lượng xuất phải bằng số lượng đang được giữ.");
+                    if (inventory.QuantityOnHand < totalProductRequest ||
+                        inventory.ReservedQuantity < totalProductRequest)
+                    {
+                        throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
+                    }
+                }
+                else if (inventory.AvailableQuantity < totalProductRequest)
+                {
+                    throw new ConflictException("Số lượng khả dụng không đủ để xuất kho.");
+                }
+
+                foreach (var lot in product.Lots)
+                {
+                    var batchNumber = lot.BatchNumber.Trim();
+                    var inventoryItem = await inventoryRepository.GetInventoryItemAsync(
+                        inventory.Id,
+                        batchNumber);
+                    if (inventoryItem is null)
+                        throw new NotFoundException($"Không tìm thấy lô hàng '{batchNumber}' tương ứng.");
+
+                    if (inventoryItem.Quantity < lot.Quantity)
+                    {
+                        throw new ConflictException($"Số lượng khả dụng trong lô '{batchNumber}' không đủ để xuất kho.");
+                    }
+                    if (inventoryItem.ExpiryDate.HasValue && inventoryItem.ExpiryDate.Value <= DateTime.UtcNow)
+                    {
+                        throw new ConflictException($"Lô hàng '{batchNumber}' đã hết hạn sử dụng.");
+                    }
+
+                    inventoryItem.Quantity -= lot.Quantity;
+
+                    await inventoryRepository.AddTransactionAsync(CreateTransaction(
+           request.WarehouseId,
+           product.ProductId,
+           userId,
+           InventoryTransactionType.Issue,
+           lot.Quantity,
+           reference,
+           request.Notes,
+                    inventoryItem.Id));
+                }
+
+                if (activeReservation is not null)
+                {
+                    inventory.ReservedQuantity -= totalProductRequest;
+                    activeReservation.Status = InventoryReservationStatus.Fulfilled;
+                }
+
+                inventory.QuantityOnHand -= totalProductRequest;
+                inventory.LastUpdate = DateTime.UtcNow;
+
+                updatedInventories.Add(inventory);
             }
-            else if (inventory.AvailableQuantity < request.Quantity)
-            {
-                throw new ConflictException("Số lượng khả dụng không đủ để xuất kho.");
-            }
-
-            inventory.QuantityOnHand -= request.Quantity;
-            inventory.LastUpdate = DateTime.UtcNow;
-
-            await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                request.WarehouseId,
-                request.ProductId,
-                userId,
-                InventoryTransactionType.Issue,
-                request.Quantity,
-                request.Reference,
-                request.Notes));
-
-            updatedInventory = inventory;
         });
 
-        return Map(updatedInventory!);
+        return updatedInventories.Select(Map).ToList();
     }
     //kiểm kê
     public async Task<InventoryDto> AdjustAsync(
@@ -449,7 +798,8 @@ public sealed class InventoryService(
         InventoryTransactionType type,
         int quantity,
         string? reference,
-        string? notes) => new()
+        string? notes,
+        Guid? inventoryItemId = null) => new()
         {
             Id = Guid.NewGuid(),
             WarehouseId = warehouseId,
@@ -457,6 +807,7 @@ public sealed class InventoryService(
             CreatedByUserId = userId,
             TransactionType = type,
             Quantity = quantity,
+            InventoryItemId = inventoryItemId,
             Reference = NormalizeOrCreateReference(reference),
             Notes = notes?.Trim(),
             TransactionDate = DateTime.UtcNow

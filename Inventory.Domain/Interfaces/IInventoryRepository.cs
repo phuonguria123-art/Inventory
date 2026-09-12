@@ -24,15 +24,18 @@ namespace Inventory.Domain.Interfaces
             bool sortDescending);
         Task<(List<InventoryTransaction> listInventoryTransaction, int totalCount)> GetAllTransactionAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
         Task<List<InventoryReservation>> GetAllReservationExpired();
-        Task<bool> TransactionExistsAsync(Guid warehouseId, Guid productId, int quantity, InventoryTransactionType transactionType, string reference);
+        Task<bool> TransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType transactionType, string reference);
         Task<InventoryReservation?> GetActiveReservationAsync(Guid inventoryId, string reference);
         Task<List<Inventories>> GetLowOnStockAsync();
         Task<List<Inventories>> GetExcessGoodsAsync();
+        Task<InventoryItem?> GetInventoryItemAsync(Guid inventoryId, string batchNumber);
         Task AddAsync(Inventories inventory);
         Task AddTransactionAsync(InventoryTransaction transaction);
         Task AddReservationAsync(InventoryReservation reservation);
+        Task AddInventoryItem(InventoryItem item);
         Task UpdateAsync(Inventories inventory);
         Task UpdateRevationAsync(InventoryReservation reservation);
+        Task UpdateInventoryItem(InventoryItem inventoryItem);
         Task ExecuteInTransactionAsync(Func<Task> operation);
     }
 }

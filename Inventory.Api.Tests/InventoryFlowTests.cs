@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Inventory.Application.Inventory;
 using Inventory.Application.Inventory.Dto;
+using Inventory.Application.Inventory.Dto.Issue;
+using Inventory.Application.Inventory.Dto.Receive;
 using Inventory.Application.Users.DTOs;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
@@ -36,33 +38,141 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         var receiveResponse = await _client.PostAsJsonAsync("/api/inventory/receive", new
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 10,
-            Reference = $"RECEIPT-{suffix}"
+            Reference = $"RECEIPT-{suffix}",
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new
+                        {
+                            BatchNumber = $"BATCH-{suffix}",
+                            Quantity = 10,
+                            UnitCost = 10m
+                        }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, receiveResponse.StatusCode);
 
-        var received = await receiveResponse.Content.ReadFromJsonAsync<InventoryDto>();
-        Assert.Equal(10, received?.QuantityOnHand);
-        Assert.Equal(10, received?.AvailableQuantity);
+        var received = await receiveResponse.Content.ReadFromJsonAsync<List<InventoryDto>>();
+        Assert.Equal(10, received?.Single().QuantityOnHand);
+        Assert.Equal(10, received?.Single().AvailableQuantity);
 
         var issueResponse = await _client.PostAsJsonAsync("/api/inventory/issue", new
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 4,
-            Reference = $"ISSUE-{suffix}"
+            Reference = $"ISSUE-{suffix}",
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new { BatchNumber = $"BATCH-{suffix}", Quantity = 4 }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, issueResponse.StatusCode);
 
-        var issued = await issueResponse.Content.ReadFromJsonAsync<InventoryDto>();
-        Assert.Equal(6, issued?.QuantityOnHand);
-        Assert.Equal(6, issued?.AvailableQuantity);
+        var issued = await issueResponse.Content.ReadFromJsonAsync<List<InventoryDto>>();
+        Assert.Equal(6, issued?.Single().QuantityOnHand);
+        Assert.Equal(6, issued?.Single().AvailableQuantity);
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.Equal(2, context.InventoryTransactions.Count(transaction =>
             transaction.ProductId == productId && transaction.WarehouseId == warehouseId));
+    }
+
+    [Fact]
+    public async Task Receive_Multiple_Products_And_Lots_Should_Update_All_Stock_Atomically()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var firstProductId = Guid.NewGuid();
+        var secondProductId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var reference = $"MULTI-RECEIPT-{suffix}";
+
+        await SeedProductAndWarehouseAsync(firstProductId, warehouseId, suffix);
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedContext = seedScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            seedContext.Products.Add(new Product
+            {
+                Id = secondProductId,
+                Name = $"Second Product {suffix}",
+                Code = $"P2-{suffix}",
+                UnitPrice = 20
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await LoginAsStaffAsync(suffix);
+
+        var request = new
+        {
+            WarehouseId = warehouseId,
+            Reference = reference,
+            Products = new object[]
+            {
+                new
+                {
+                    ProductId = firstProductId,
+                    Lots = new[]
+                    {
+                        new { BatchNumber = $"BATCH-A-{suffix}", Quantity = 3, UnitCost = 10m },
+                        new { BatchNumber = $"BATCH-B-{suffix}", Quantity = 2, UnitCost = 10m }
+                    }
+                },
+                new
+                {
+                    ProductId = secondProductId,
+                    Lots = new[]
+                    {
+                        new { BatchNumber = $"BATCH-C-{suffix}", Quantity = 4, UnitCost = 20m }
+                    }
+                }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/inventory/receive", request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<List<InventoryDto>>();
+        Assert.Equal(2, result?.Count);
+        Assert.Contains(result!, inventory =>
+            inventory.ProductId == firstProductId && inventory.QuantityOnHand == 5);
+        Assert.Contains(result!, inventory =>
+            inventory.ProductId == secondProductId && inventory.QuantityOnHand == 4);
+
+        var repeatedResponse = await _client.PostAsJsonAsync("/api/inventory/receive", request);
+        Assert.Equal(HttpStatusCode.Conflict, repeatedResponse.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var inventories = context.Inventories
+            .Where(inventory => inventory.WarehouseId == warehouseId)
+            .ToList();
+        var inventoryIds = inventories.Select(inventory => inventory.Id).ToList();
+        var lots = context.InventoryItems
+            .Where(item => inventoryIds.Contains(item.InventoryId))
+            .ToList();
+        var transactions = context.InventoryTransactions
+            .Where(transaction => transaction.Reference == reference)
+            .ToList();
+
+        Assert.Equal(3, lots.Count);
+        Assert.Equal(3, transactions.Count);
+        Assert.All(transactions, transaction => Assert.NotNull(transaction.InventoryItemId));
+        Assert.All(inventories, inventory => Assert.Equal(
+            inventory.QuantityOnHand,
+            lots.Where(item => item.InventoryId == inventory.Id).Sum(item => item.Quantity)));
     }
 
     [Fact]
@@ -77,16 +187,39 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         var receiveResponse = await _client.PostAsJsonAsync("/api/inventory/receive", new
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 1
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new
+                        {
+                            BatchNumber = $"BATCH-{suffix}",
+                            Quantity = 1,
+                            UnitCost = 10m
+                        }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, receiveResponse.StatusCode);
 
         var response = await _client.PostAsJsonAsync("/api/inventory/issue", new
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 2
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new { BatchNumber = $"BATCH-{suffix}", Quantity = 2 }
+                    }
+                }
+            }
         });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -107,8 +240,22 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         var receiveResponse = await _client.PostAsJsonAsync("/api/inventory/receive", new
         {
             WarehouseId = sourceWarehouseId,
-            ProductId = productId,
-            Quantity = 10
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new
+                        {
+                            BatchNumber = $"BATCH-{suffix}",
+                            Quantity = 10,
+                            UnitCost = 10m
+                        }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, receiveResponse.StatusCode);
 
@@ -116,9 +263,23 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         {
             WarehouseFromId = sourceWarehouseId,
             WarehouseToId = destinationWarehouseId,
-            ProductId = productId,
-            Quantity = 4,
-            Reference = reference
+            Reference = reference,
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new
+                        {
+                            BatchNumber = $"BATCH-{suffix}",
+                            Quantity = 4,
+                            Location = "DEST-A"
+                        }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.NoContent, transferResponse.StatusCode);
 
@@ -131,11 +292,16 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
 
         Assert.Equal(6, source.QuantityOnHand);
         Assert.Equal(4, destination.QuantityOnHand);
+        Assert.Equal(6, context.InventoryItems.Single(item =>
+            item.InventoryId == source.Id && item.BatchNumber == $"BATCH-{suffix}").Quantity);
+        Assert.Equal(4, context.InventoryItems.Single(item =>
+            item.InventoryId == destination.Id && item.BatchNumber == $"BATCH-{suffix}").Quantity);
 
         var transferTransactions = context.InventoryTransactions
             .Where(transaction => transaction.Reference == reference)
             .ToList();
         Assert.Equal(2, transferTransactions.Count);
+        Assert.All(transferTransactions, transaction => Assert.NotNull(transaction.InventoryItemId));
         Assert.Contains(transferTransactions, transaction =>
             transaction.TransactionType == InventoryTransactionType.TransferOut &&
             transaction.WarehouseId == sourceWarehouseId);
@@ -159,17 +325,40 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         await _client.PostAsJsonAsync("/api/inventory/receive", new
         {
             WarehouseId = sourceWarehouseId,
-            ProductId = productId,
-            Quantity = 3
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new
+                        {
+                            BatchNumber = $"BATCH-{suffix}",
+                            Quantity = 3,
+                            UnitCost = 10m
+                        }
+                    }
+                }
+            }
         });
 
         var response = await _client.PostAsJsonAsync("/api/inventory/transfer", new
         {
             WarehouseFromId = sourceWarehouseId,
             WarehouseToId = destinationWarehouseId,
-            ProductId = productId,
-            Quantity = 4,
-            Reference = reference
+            Reference = reference,
+            Products = new[]
+            {
+                new
+                {
+                    ProductId = productId,
+                    Lots = new[]
+                    {
+                        new { BatchNumber = $"BATCH-{suffix}", Quantity = 4 }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 
@@ -226,6 +415,8 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         var productId = Guid.NewGuid();
         var warehouseId = Guid.NewGuid();
         var inventoryId = Guid.NewGuid();
+        var firstBatchNumber = $"BATCH-A-{suffix}";
+        var secondBatchNumber = $"BATCH-B-{suffix}";
         var userId = Guid.NewGuid();
         var reference = $"ORDER-{suffix}";
         await SeedProductAndWarehouseAsync(productId, warehouseId, suffix);
@@ -240,6 +431,27 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
             QuantityOnHand = 10,
             ReservedQuantity = 2
         });
+        context.InventoryItems.AddRange(
+            new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                InventoryId = inventoryId,
+                BatchNumber = firstBatchNumber,
+                Quantity = 6,
+                UnitCost = 10,
+                DateReceived = DateTime.UtcNow,
+                Location = "TEST-A"
+            },
+            new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                InventoryId = inventoryId,
+                BatchNumber = secondBatchNumber,
+                Quantity = 4,
+                UnitCost = 10,
+                DateReceived = DateTime.UtcNow,
+                Location = "TEST-B"
+            });
         await context.SaveChangesAsync();
 
         var service = scope.ServiceProvider.GetRequiredService<IInventoryService>();
@@ -292,17 +504,38 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
             Reference = fulfillmentReference
         }, userId);
 
-        var issued = await service.IssueAsync(new InventoryMovementRequestDto
+        var issued = await service.IssueAsync(new IssueInventoryRequestDto
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 4,
-            Reference = fulfillmentReference
+            Reference = fulfillmentReference,
+            Products =
+            [
+                new IssueProductDto
+                {
+                    ProductId = productId,
+                    Lots =
+                    [
+                        new IssueLotDto
+                        {
+                            BatchNumber = firstBatchNumber,
+                            Quantity = 2
+                        },
+                        new IssueLotDto
+                        {
+                            BatchNumber = secondBatchNumber,
+                            Quantity = 2
+                        }
+                    ]
+                }
+            ]
         }, userId);
 
-        Assert.Equal(6, issued.QuantityOnHand);
-        Assert.Equal(2, issued.ReservedQuantity);
-        Assert.Equal(4, issued.AvailableQuantity);
+        Assert.Equal(6, issued.Single().QuantityOnHand);
+        Assert.Equal(2, issued.Single().ReservedQuantity);
+        Assert.Equal(4, issued.Single().AvailableQuantity);
+        Assert.Equal(6, context.InventoryItems
+            .Where(item => item.InventoryId == inventoryId)
+            .Sum(item => item.Quantity));
         Assert.Equal(
             InventoryReservationStatus.Fulfilled,
             context.InventoryReservations.Single(item =>
