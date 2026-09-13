@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Inventory.Application.Inventory.Dto;
 
 public sealed class InventoryDto
@@ -10,7 +12,8 @@ public sealed class InventoryDto
     public int QuantityOnHand { get; set; }
     public int ReservedQuantity { get; set; }
     public int AvailableQuantity { get; set; }
-    public DateTime LastUpdate { get; set; }
+    [JsonPropertyName("lastUpdate")]
+    public DateTime LastUpdatedAt { get; set; }
     public string WarehouseCode { get; set; } = string.Empty;
     public string WarehouseName { get; set; } = string.Empty;
     public string ProductCode { get; set; } = string.Empty;

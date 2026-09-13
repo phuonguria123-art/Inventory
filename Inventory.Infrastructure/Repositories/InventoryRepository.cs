@@ -13,9 +13,9 @@ namespace Inventory.Infrastructure.Repositories
 {
     public class InventoryRepository(ApplicationDbContext _context) : IInventoryRepository
     {
-        public async Task AddAsync(Inventories inventory)
+        public async Task AddInventoryAsync(InventoryBalance inventory)
         {
-            await _context.Inventories.AddAsync(inventory);
+            await _context.InventoryBalances.AddAsync(inventory);
         }
 
         public async Task AddTransactionAsync(InventoryTransaction transaction)
@@ -28,11 +28,11 @@ namespace Inventory.Infrastructure.Repositories
             await _context.InventoryReservations.AddAsync(reservation);
         }
 
-        public async Task AddInventoryItem(InventoryItem item)
+        public async Task AddInventoryItemAsync(InventoryItem item)
         {
             await _context.InventoryItems.AddAsync(item);
         }
-        public async Task<(List<Inventories> listInventory, int totalCount)> GetAllAsync(
+        public async Task<(List<InventoryBalance> Items, int TotalCount)> GetPagedAsync(
             int pageSize,
             int pageNumber,
             Guid? warehouseId,
@@ -42,7 +42,7 @@ namespace Inventory.Infrastructure.Repositories
             string? sortBy,
             bool sortDescending)
         {
-            var query = _context.Inventories
+            var query = _context.InventoryBalances
                 .AsNoTracking()
                 .Include(x => x.Warehouse)
                 .Include(x => x.Product)
@@ -86,8 +86,8 @@ namespace Inventory.Infrastructure.Repositories
                     ? query.OrderByDescending(x => x.Warehouse.Name)
                     : query.OrderBy(x => x.Warehouse.Name),
                 _ => sortDescending
-                    ? query.OrderByDescending(x => x.LastUpdate)
-                    : query.OrderBy(x => x.LastUpdate)
+                    ? query.OrderByDescending(x => x.LastUpdatedAt)
+                    : query.OrderBy(x => x.LastUpdatedAt)
             };
 
             var result = await orderedQuery
@@ -99,19 +99,19 @@ namespace Inventory.Infrastructure.Repositories
             return (result, totalCount);
         }
 
-        public async Task<Inventories?> GetAsync(Guid warehouseId, Guid productId)
+        public async Task<InventoryBalance?> GetByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
         {
-            return await _context.Inventories.FirstOrDefaultAsync(x =>
+            return await _context.InventoryBalances.FirstOrDefaultAsync(x =>
                 x.WarehouseId == warehouseId && x.ProductId == productId);
         }
-        public async Task<Inventories?> GetById(Guid inventoryId)
+        public async Task<InventoryBalance?> GetByIdAsync(Guid inventoryId)
         {
-            return await _context.Inventories.FirstOrDefaultAsync(x => x.Id == inventoryId);
+            return await _context.InventoryBalances.FirstOrDefaultAsync(x => x.Id == inventoryId);
         }
 
-        public async Task<Inventories?> GetReadOnlyAsync(Guid warehouseId, Guid productId)
+        public async Task<InventoryBalance?> GetReadOnlyByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
         {
-            return await _context.Inventories
+            return await _context.InventoryBalances
                 .AsNoTracking()
                 .Include(x => x.Warehouse)
                 .Include(x => x.Product)
@@ -136,11 +136,16 @@ namespace Inventory.Infrastructure.Repositories
                 reservation.Reference == reference &&
                 reservation.Status == InventoryReservationStatus.Active);
         }
-        public async Task<List<InventoryReservation>> GetAllReservationExpired()
+        public async Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync()
         {
-            return await _context.InventoryReservations.Where(x => x.ExpiresAt >= DateTime.UtcNow).ToListAsync();
+            return await _context.InventoryReservations
+    .Where(reservation =>
+        reservation.Status == InventoryReservationStatus.Active &&
+        reservation.ExpiresAt.HasValue &&
+        reservation.ExpiresAt.Value <= DateTime.UtcNow)
+    .ToListAsync();
         }
-        public async Task<(List<InventoryTransaction> listInventoryTransaction, int totalCount)> GetAllTransactionAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
+        public async Task<(List<InventoryTransaction> Items, int TotalCount)> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
         {
             var query = _context.InventoryTransactions.AsNoTracking();
             if (warehouseId.HasValue) { query = query.Where(x => x.WarehouseId == warehouseId); }
@@ -153,17 +158,17 @@ namespace Inventory.Infrastructure.Repositories
             if (!string.IsNullOrWhiteSpace(reference)) { query = query.Where(x => x.Reference == reference); }
 
             int totalCount = await query.CountAsync();
-            var inventoryTransaction = await query
+            var transactions = await query
                   .OrderByDescending(x => x.TransactionDate)
                   .ThenByDescending(x => x.Id)
                   .Skip((pageNumber - 1) * pageSize)
                   .Take(pageSize)
                   .ToListAsync();
-            return (inventoryTransaction, totalCount);
+            return (transactions, totalCount);
         }
-        public async Task<List<Inventories>> GetLowOnStockAsync()
+        public async Task<List<InventoryBalance>> GetLowStockAsync()
         {
-            return await _context.Inventories
+            return await _context.InventoryBalances
                 .AsNoTracking()
                 .Include(x => x.Warehouse)
                 .Include(x => x.Product)
@@ -172,9 +177,9 @@ namespace Inventory.Infrastructure.Repositories
                 .ThenBy(x => x.Product.Name)
                 .ToListAsync();
         }
-        public async Task<List<Inventories>> GetExcessGoodsAsync()
+        public async Task<List<InventoryBalance>> GetExcessStockAsync()
         {
-            return await _context.Inventories
+            return await _context.InventoryBalances
                 .AsNoTracking()
                 .Include(x => x.Warehouse)
                 .Include(x => x.Product)
@@ -206,17 +211,17 @@ namespace Inventory.Infrastructure.Repositories
             }
         }
 
-        public async Task UpdateAsync(Inventories inventory)
+        public async Task UpdateInventoryAsync(InventoryBalance inventory)
         {
-            _context.Inventories.Update(inventory);
+            _context.InventoryBalances.Update(inventory);
             await _context.SaveChangesAsync();
         }
-        public async Task UpdateRevationAsync(InventoryReservation reservation)
+        public async Task UpdateReservationAsync(InventoryReservation reservation)
         {
             _context.InventoryReservations.Update(reservation);
             await _context.SaveChangesAsync();
         }
-        public async Task UpdateInventoryItem(InventoryItem inventoryItem)
+        public async Task UpdateInventoryItemAsync(InventoryItem inventoryItem)
         {
             _context.InventoryItems.Update(inventoryItem);
             await _context.SaveChangesAsync();

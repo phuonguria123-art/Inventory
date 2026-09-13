@@ -45,7 +45,7 @@ namespace Inventory.Application.Mappings
                     options => options.MapFrom(source =>
                         source.RolePermissions.Select(rolePermission => rolePermission.Permission)));
 
-            CreateMap<Inventories, InventoryDto>()
+            CreateMap<InventoryBalance, InventoryDto>()
                 .ForMember(destination => destination.WarehouseCode,
                     options => options.MapFrom(source => source.Warehouse.Code))
                 .ForMember(destination => destination.WarehouseName,

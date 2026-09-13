@@ -13,6 +13,6 @@ public sealed class InventoryReservation
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ExpiresAt { get; set; }
 
-    public Inventories Inventory { get; set; } = null!;
+    public InventoryBalance Inventory { get; set; } = null!;
     public User CreatedByUser { get; set; } = null!;
 }

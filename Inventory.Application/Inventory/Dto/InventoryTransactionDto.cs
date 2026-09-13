@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Inventory.Application.Inventory.Dto
 {
-    public class InventoryTransactionDto
+    public sealed class InventoryTransactionDto
     {
         public Guid Id { get; set; }
 

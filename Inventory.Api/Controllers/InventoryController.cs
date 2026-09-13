@@ -3,6 +3,7 @@ using Inventory.Application.Inventory;
 using Inventory.Application.Inventory.Dto;
 using Inventory.Application.Inventory.Dto.Issue;
 using Inventory.Application.Inventory.Dto.Receive;
+using Inventory.Application.Inventory.Dto.Transfer;
 using Inventory.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
 {
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet]
-    public async Task<ActionResult<Inventory.Application.Common.Models.PagedResult<InventoryDto>>> GetListAsync(
+    public async Task<ActionResult<Inventory.Application.Common.Models.PagedResult<InventoryDto>>> GetPagedAsync(
         int pageNumber = 1,
         int pageSize = 20,
         Guid? warehouseId = null,
@@ -26,7 +27,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
         string? sortBy = null,
         bool sortDescending = true)
     {
-        return Ok(await inventoryService.GetListAsync(
+        return Ok(await inventoryService.GetPagedAsync(
             pageSize,
             pageNumber,
             warehouseId,
@@ -38,27 +39,27 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     }
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("warehouses/{warehouseId:guid}/products/{productId:guid}")]
-    public async Task<ActionResult<InventoryDto>> Get(Guid warehouseId, Guid productId)
+    public async Task<ActionResult<InventoryDto>> GetByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
     {
-        return Ok(await inventoryService.GetAsync(warehouseId, productId));
+        return Ok(await inventoryService.GetByWarehouseAndProductAsync(warehouseId, productId));
     }
     //hàng sắp hết
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("low-stock")]
-    public async Task<ActionResult<List<InventoryDto>>> GetListLowOnStock()
+    public async Task<ActionResult<List<InventoryDto>>> GetLowStockAsync()
     {
-        return Ok(await inventoryService.GetLowOnStockAsync());
+        return Ok(await inventoryService.GetLowStockAsync());
     }
     //hàng vượt ngưỡng
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("excess-stock")]
-    public async Task<ActionResult<List<InventoryDto>>> GetListExcessGoodsAsync()
+    public async Task<ActionResult<List<InventoryDto>>> GetExcessStockAsync()
     {
-        return Ok(await inventoryService.GetExcessGoodsAsync());
+        return Ok(await inventoryService.GetExcessStockAsync());
     }
     [Authorize(Policy = PermissionCodes.InventoryReceive)]
     [HttpPost("receive")]
-    public async Task<ActionResult<List<InventoryDto>>> Receive(ReceiveInventoryRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> ReceiveAsync(ReceiveInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
@@ -68,7 +69,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
 
     [Authorize(Policy = PermissionCodes.InventoryIssue)]
     [HttpPost("issue")]
-    public async Task<ActionResult<List<InventoryDto>>> Issue(IssueInventoryRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> IssueAsync(IssueInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
@@ -78,17 +79,17 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
 
     [Authorize(Policy = PermissionCodes.InventoryIssue)]
     [HttpPost("reservations")]
-    public async Task<ActionResult<InventoryDto>> Reserve(InventoryReservationRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> ReserveAsync(ReserveInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
 
-        return Ok(await inventoryService.Reservation(request, userId));
+        return Ok(await inventoryService.ReserveAsync(request, userId));
     }
 
     [Authorize(Policy = PermissionCodes.InventoryAdjust)]
     [HttpPost("adjust")]
-    public async Task<ActionResult<InventoryDto>> Adjust(InventoryAdjustmentRequestDto request)
+    public async Task<ActionResult<List<InventoryDto>>> AdjustAsync(AdjustInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
@@ -98,7 +99,7 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
 
     [Authorize(Policy = PermissionCodes.InventoryTransfer)]
     [HttpPost("transfer")]
-    public async Task<IActionResult> Transfer(InventoryTransferRequestDto request)
+    public async Task<IActionResult> TransferAsync(TransferInventoryRequestDto request)
     {
         if (!TryGetCurrentUserId(out var userId))
             return Unauthorized();
@@ -108,9 +109,9 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     }
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("transactions")]
-    public async Task<IActionResult> InventoryTransaction(int pageNumber = 1, int pageSize = 20, Guid? warehouseId = null, Guid? productId = null, InventoryTransactionType? transactionType = null, Guid? createdByUserId = null, string? reference = null)
+    public async Task<IActionResult> GetTransactionsAsync(int pageNumber = 1, int pageSize = 20, Guid? warehouseId = null, Guid? productId = null, InventoryTransactionType? transactionType = null, Guid? createdByUserId = null, string? reference = null)
     {
-        return Ok( await inventoryService.GetListTransaction(pageSize, pageNumber, warehouseId, productId, transactionType, createdByUserId, reference));
+        return Ok(await inventoryService.GetTransactionsAsync(pageSize, pageNumber, warehouseId, productId, transactionType, createdByUserId, reference));
     }
     private bool TryGetCurrentUserId(out Guid userId)
     {

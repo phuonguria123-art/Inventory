@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Inventory.Application.Inventory.Dto.Issue
 {
-    public class IssueInventoryRequestDto
+    public sealed class IssueInventoryRequestDto
     {
         public Guid WarehouseId { get; set; }
         [MaxLength(100)]

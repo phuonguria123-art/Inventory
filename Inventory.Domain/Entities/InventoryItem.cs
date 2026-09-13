@@ -17,6 +17,6 @@ namespace Inventory.Domain.Entities
 
         public virtual Warehouse Warehouse { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;
-        public virtual Inventories Inventory { get; set; } = null!;
+        public virtual InventoryBalance Inventory { get; set; } = null!;
     }
 }

@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Inventory.Application.Inventory;
 using Inventory.Application.Inventory.Dto;
+using Inventory.Application.Inventory.Dto.Adjust;
 using Inventory.Application.Inventory.Dto.Issue;
 using Inventory.Application.Inventory.Dto.Receive;
+using Inventory.Application.Inventory.Dto.Reservation;
 using Inventory.Application.Users.DTOs;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
@@ -156,7 +158,7 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var inventories = context.Inventories
+        var inventories = context.InventoryBalances
             .Where(inventory => inventory.WarehouseId == warehouseId)
             .ToList();
         var inventoryIds = inventories.Select(inventory => inventory.Id).ToList();
@@ -285,9 +287,9 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var source = context.Inventories.Single(inventory =>
+        var source = context.InventoryBalances.Single(inventory =>
             inventory.WarehouseId == sourceWarehouseId && inventory.ProductId == productId);
-        var destination = context.Inventories.Single(inventory =>
+        var destination = context.InventoryBalances.Single(inventory =>
             inventory.WarehouseId == destinationWarehouseId && inventory.ProductId == productId);
 
         Assert.Equal(6, source.QuantityOnHand);
@@ -364,18 +366,18 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var source = context.Inventories.Single(inventory =>
+        var source = context.InventoryBalances.Single(inventory =>
             inventory.WarehouseId == sourceWarehouseId && inventory.ProductId == productId);
 
         Assert.Equal(3, source.QuantityOnHand);
-        Assert.DoesNotContain(context.Inventories, inventory =>
+        Assert.DoesNotContain(context.InventoryBalances, inventory =>
             inventory.WarehouseId == destinationWarehouseId && inventory.ProductId == productId);
         Assert.DoesNotContain(context.InventoryTransactions, transaction =>
             transaction.Reference == reference);
     }
 
     [Fact]
-    public async Task GetListTransaction_Should_Filter_Count_And_Order_Results()
+    public async Task GetTransactionsAsync_Should_Filter_Count_And_Order_Results()
     {
         var suffix = Guid.NewGuid().ToString("N");
         var productId = Guid.NewGuid();
@@ -394,7 +396,7 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         await context.SaveChangesAsync();
 
         var service = scope.ServiceProvider.GetRequiredService<IInventoryService>();
-        var result = await service.GetListTransaction(
+        var result = await service.GetTransactionsAsync(
             pageSize: 1,
             pageNumber: 1,
             warehouseId,
@@ -423,7 +425,7 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        context.Inventories.Add(new Inventories
+        context.InventoryBalances.Add(new InventoryBalance
         {
             Id = inventoryId,
             WarehouseId = warehouseId,
@@ -455,53 +457,77 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         await context.SaveChangesAsync();
 
         var service = scope.ServiceProvider.GetRequiredService<IInventoryService>();
-        var result = await service.Reservation(new InventoryReservationRequestDto
+        var result = await service.ReserveAsync(new ReserveInventoryRequestDto
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 3,
-            Reference = reference
+            Reference = reference,
+            Products =
+            [
+                new ReserveProductDto
+                {
+                    ProductId = productId,
+                    Quantity = 3
+                }
+            ]
         }, userId);
 
-        Assert.Equal(10, result.QuantityOnHand);
-        Assert.Equal(5, result.ReservedQuantity);
-        Assert.Equal(5, result.AvailableQuantity);
+        Assert.Equal(10, result.Single().QuantityOnHand);
+        Assert.Equal(5, result.Single().ReservedQuantity);
+        Assert.Equal(5, result.Single().AvailableQuantity);
         var reservation = context.InventoryReservations.Single(item =>
             item.Reference == reference && item.InventoryId == inventoryId);
         Assert.Equal(InventoryReservationStatus.Active, reservation.Status);
         Assert.Equal(userId, reservation.CreatedByUserId);
         Assert.Equal(3, reservation.Quantity);
 
-        await Assert.ThrowsAsync<ConflictException>(() => service.Reservation(
-            new InventoryReservationRequestDto
+        await Assert.ThrowsAsync<ConflictException>(() => service.ReserveAsync(
+            new ReserveInventoryRequestDto
             {
                 WarehouseId = warehouseId,
-                ProductId = productId,
-                Quantity = 6,
-                Reference = $"TOO-MUCH-{suffix}"
+                Reference = $"TOO-MUCH-{suffix}",
+                Products =
+                [
+                    new ReserveProductDto
+                    {
+                        ProductId = productId,
+                        Quantity = 6
+                    }
+                ]
             },
             userId));
 
-        var released = await service.Reservation(new InventoryReservationRequestDto
+        var released = await service.ReserveAsync(new ReserveInventoryRequestDto
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 3,
             Reference = reference,
-            IsCancel = true
+            IsCancellation = true,
+            Products =
+            [
+                new ReserveProductDto
+                {
+                    ProductId = productId,
+                    Quantity = 3
+                }
+            ]
         }, userId);
 
-        Assert.Equal(2, released.ReservedQuantity);
-        Assert.Equal(8, released.AvailableQuantity);
+        Assert.Equal(2, released.Single().ReservedQuantity);
+        Assert.Equal(8, released.Single().AvailableQuantity);
         Assert.Equal(InventoryReservationStatus.Released, reservation.Status);
 
         var fulfillmentReference = $"FULFILL-{suffix}";
-        await service.Reservation(new InventoryReservationRequestDto
+        await service.ReserveAsync(new ReserveInventoryRequestDto
         {
             WarehouseId = warehouseId,
-            ProductId = productId,
-            Quantity = 4,
-            Reference = fulfillmentReference
+            Reference = fulfillmentReference,
+            Products =
+            [
+                new ReserveProductDto
+                {
+                    ProductId = productId,
+                    Quantity = 4
+                }
+            ]
         }, userId);
 
         var issued = await service.IssueAsync(new IssueInventoryRequestDto
@@ -544,6 +570,87 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
     }
 
     [Fact]
+    public async Task Adjusting_One_Lot_Should_Preserve_Uncounted_Lots_And_Update_Total_By_Difference()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var productId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var inventoryId = Guid.NewGuid();
+        var adjustedBatchNumber = $"COUNTED-{suffix}";
+        var uncountedBatchNumber = $"UNCOUNTED-{suffix}";
+        var reference = $"ADJUST-{suffix}";
+        var userId = Guid.NewGuid();
+        await SeedProductAndWarehouseAsync(productId, warehouseId, suffix);
+
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        context.InventoryBalances.Add(new InventoryBalance
+        {
+            Id = inventoryId,
+            WarehouseId = warehouseId,
+            ProductId = productId,
+            QuantityOnHand = 10,
+            ReservedQuantity = 2
+        });
+        context.InventoryItems.AddRange(
+            new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                InventoryId = inventoryId,
+                BatchNumber = adjustedBatchNumber,
+                Quantity = 6,
+                UnitCost = 10,
+                DateReceived = DateTime.UtcNow,
+                Location = "TEST-A"
+            },
+            new InventoryItem
+            {
+                Id = Guid.NewGuid(),
+                InventoryId = inventoryId,
+                BatchNumber = uncountedBatchNumber,
+                Quantity = 4,
+                UnitCost = 10,
+                DateReceived = DateTime.UtcNow,
+                Location = "TEST-B"
+            });
+        await context.SaveChangesAsync();
+
+        var service = scope.ServiceProvider.GetRequiredService<IInventoryService>();
+        var result = await service.AdjustAsync(new AdjustInventoryRequestDto
+        {
+            WarehouseId = warehouseId,
+            Reference = reference,
+            Notes = "Kiểm kê một phần",
+            Products =
+            [
+                new AdjustProductDto
+                {
+                    ProductId = productId,
+                    Lots =
+                    [
+                        new AdjustLotDto
+                        {
+                            BatchNumber = adjustedBatchNumber,
+                            ActualQuantity = 5
+                        }
+                    ]
+                }
+            ]
+        }, userId);
+
+        Assert.Equal(9, result.Single().QuantityOnHand);
+        Assert.Equal(5, context.InventoryItems.Single(item =>
+            item.InventoryId == inventoryId && item.BatchNumber == adjustedBatchNumber).Quantity);
+        Assert.Equal(4, context.InventoryItems.Single(item =>
+            item.InventoryId == inventoryId && item.BatchNumber == uncountedBatchNumber).Quantity);
+
+        var transaction = context.InventoryTransactions.Single(item =>
+            item.Reference == reference && item.ProductId == productId);
+        Assert.Equal(InventoryTransactionType.AdjustmentDecrease, transaction.TransactionType);
+        Assert.Equal(1, transaction.Quantity);
+    }
+
+    [Fact]
     public async Task InventoryQueries_Should_Filter_Sort_And_Classify_Stock()
     {
         var suffix = Guid.NewGuid().ToString("N");
@@ -577,8 +684,8 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
                 Code = $"BETA-{suffix}",
                 UnitPrice = 10
             });
-        context.Inventories.AddRange(
-            new Inventories
+        context.InventoryBalances.AddRange(
+            new InventoryBalance
             {
                 Id = Guid.NewGuid(),
                 WarehouseId = warehouseId,
@@ -588,7 +695,7 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
                 MinStock = 3,
                 MaxStock = 20
             },
-            new Inventories
+            new InventoryBalance
             {
                 Id = Guid.NewGuid(),
                 WarehouseId = warehouseId,
@@ -601,7 +708,7 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         await context.SaveChangesAsync();
 
         var service = scope.ServiceProvider.GetRequiredService<IInventoryService>();
-        var page = await service.GetListAsync(
+        var page = await service.GetPagedAsync(
             pageSize: 10,
             pageNumber: 1,
             warehouseId,
@@ -616,12 +723,12 @@ public sealed class InventoryFlowTests : IClassFixture<InventoryApiFactory>
         Assert.All(page.Items, item => Assert.Equal($"CENTRAL-{suffix}", item.WarehouseCode));
         Assert.Contains(page.Items, item => item.ProductCode == $"ALPHA-{suffix}");
 
-        var detail = await service.GetAsync(warehouseId, lowStockProductId);
+        var detail = await service.GetByWarehouseAndProductAsync(warehouseId, lowStockProductId);
         Assert.Equal($"Central Warehouse {suffix}", detail.WarehouseName);
         Assert.Equal($"Alpha Product {suffix}", detail.ProductName);
 
-        var lowStock = await service.GetLowOnStockAsync();
-        var excessStock = await service.GetExcessGoodsAsync();
+        var lowStock = await service.GetLowStockAsync();
+        var excessStock = await service.GetExcessStockAsync();
         Assert.Contains(lowStock, item => item.ProductId == lowStockProductId);
         Assert.Contains(excessStock, item => item.ProductId == excessProductId);
         Assert.DoesNotContain(excessStock, item => item.ProductId == lowStockProductId);

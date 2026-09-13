@@ -26,7 +26,7 @@ namespace Inventory.Infrastructure.Repositories
 
         public async Task<bool> HasInventoryAsync(Guid warehouseId)
         {
-            return await _context.Inventories.AnyAsync(item =>
+            return await _context.InventoryBalances.AnyAsync(item =>
                        item.WarehouseId == warehouseId && item.QuantityOnHand > 0);
 
         }

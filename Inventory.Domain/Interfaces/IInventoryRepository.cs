@@ -10,10 +10,10 @@ namespace Inventory.Domain.Interfaces
 {
     public interface IInventoryRepository
     {
-        Task<Inventories?> GetAsync(Guid warehouseId, Guid productId);
-        Task<Inventories?> GetById(Guid inventoryId);
-        Task<Inventories?> GetReadOnlyAsync(Guid warehouseId, Guid productId);
-        Task<(List<Inventories> listInventory, int totalCount)> GetAllAsync(
+        Task<InventoryBalance?> GetByWarehouseAndProductAsync(Guid warehouseId, Guid productId);
+        Task<InventoryBalance?> GetByIdAsync(Guid inventoryId);
+        Task<InventoryBalance?> GetReadOnlyByWarehouseAndProductAsync(Guid warehouseId, Guid productId);
+        Task<(List<InventoryBalance> Items, int TotalCount)> GetPagedAsync(
             int pageSize,
             int pageNumber,
             Guid? warehouseId,
@@ -22,20 +22,20 @@ namespace Inventory.Domain.Interfaces
             string? productSearch,
             string? sortBy,
             bool sortDescending);
-        Task<(List<InventoryTransaction> listInventoryTransaction, int totalCount)> GetAllTransactionAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
-        Task<List<InventoryReservation>> GetAllReservationExpired();
+        Task<(List<InventoryTransaction> Items, int TotalCount)> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
+        Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync();
         Task<bool> TransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType transactionType, string reference);
         Task<InventoryReservation?> GetActiveReservationAsync(Guid inventoryId, string reference);
-        Task<List<Inventories>> GetLowOnStockAsync();
-        Task<List<Inventories>> GetExcessGoodsAsync();
+        Task<List<InventoryBalance>> GetLowStockAsync();
+        Task<List<InventoryBalance>> GetExcessStockAsync();
         Task<InventoryItem?> GetInventoryItemAsync(Guid inventoryId, string batchNumber);
-        Task AddAsync(Inventories inventory);
+        Task AddInventoryAsync(InventoryBalance inventory);
         Task AddTransactionAsync(InventoryTransaction transaction);
         Task AddReservationAsync(InventoryReservation reservation);
-        Task AddInventoryItem(InventoryItem item);
-        Task UpdateAsync(Inventories inventory);
-        Task UpdateRevationAsync(InventoryReservation reservation);
-        Task UpdateInventoryItem(InventoryItem inventoryItem);
+        Task AddInventoryItemAsync(InventoryItem item);
+        Task UpdateInventoryAsync(InventoryBalance inventory);
+        Task UpdateReservationAsync(InventoryReservation reservation);
+        Task UpdateInventoryItemAsync(InventoryItem inventoryItem);
         Task ExecuteInTransactionAsync(Func<Task> operation);
     }
 }

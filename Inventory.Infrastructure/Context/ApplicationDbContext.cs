@@ -17,7 +17,7 @@ namespace Inventory.Infrastructure.Context
         public DbSet<Permission> Permissions { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<Warehouse> Warehouses { get; set; }
-        public DbSet<Inventories> Inventories { get; set; }
+        public DbSet<InventoryBalance> InventoryBalances { get; set; }
         public DbSet<InventoryItem> InventoryItems { get; set; }
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
         public DbSet<InventoryReservation> InventoryReservations { get; set; }
@@ -60,21 +60,26 @@ namespace Inventory.Infrastructure.Context
                 .Property(supplier => supplier.IsActive)
                 .HasDefaultValue(true);
 
-            modelBuilder.Entity<Inventories>()
+            modelBuilder.Entity<InventoryBalance>()
+                .ToTable("Inventories");
+            modelBuilder.Entity<InventoryBalance>()
+                .Property(inventory => inventory.LastUpdatedAt)
+                .HasColumnName("LastUpdate");
+            modelBuilder.Entity<InventoryBalance>()
                 .HasIndex(inventory => new { inventory.WarehouseId, inventory.ProductId })
                 .IsUnique();
-            modelBuilder.Entity<Inventories>()
+            modelBuilder.Entity<InventoryBalance>()
                 .HasOne(inventory => inventory.Warehouse)
                 .WithMany()
                 .HasForeignKey(inventory => inventory.WarehouseId)
                 .OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Inventories>()
+            modelBuilder.Entity<InventoryBalance>()
                 .HasOne(inventory => inventory.Product)
                 .WithMany()
                 .HasForeignKey(inventory => inventory.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Inventories>()
-                .ToTable(table =>
+            modelBuilder.Entity<InventoryBalance>()
+                .ToTable("Inventories", table =>
                 {
                     table.HasCheckConstraint("CK_Inventories_QuantityOnHand", "[QuantityOnHand] >= 0");
                     table.HasCheckConstraint("CK_Inventories_ReservedQuantity", "[ReservedQuantity] >= 0 AND [ReservedQuantity] <= [QuantityOnHand]");

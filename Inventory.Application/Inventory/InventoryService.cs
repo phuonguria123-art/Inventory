@@ -1,8 +1,10 @@
 using AutoMapper;
 using Inventory.Application.Common.Models;
 using Inventory.Application.Inventory.Dto;
+using Inventory.Application.Inventory.Dto.Adjust;
 using Inventory.Application.Inventory.Dto.Issue;
 using Inventory.Application.Inventory.Dto.Receive;
+using Inventory.Application.Inventory.Dto.Transfer;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
 using Inventory.Domain.Exceptions;
@@ -18,19 +20,19 @@ public sealed class InventoryService(
 
     ) : IInventoryService
 {
-    public async Task<InventoryDto> GetAsync(Guid warehouseId, Guid productId)
+    public async Task<InventoryDto> GetByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
     {
         if (warehouseId == Guid.Empty || productId == Guid.Empty)
             throw new ValidationException("Kho và sản phẩm là bắt buộc.");
 
-        var inventory = await inventoryRepository.GetReadOnlyAsync(warehouseId, productId);
+        var inventory = await inventoryRepository.GetReadOnlyByWarehouseAndProductAsync(warehouseId, productId);
         if (inventory is null)
             throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
 
         return mapper.Map<InventoryDto>(inventory);
     }
 
-    public async Task<PagedResult<InventoryDto>> GetListAsync(
+    public async Task<PagedResult<InventoryDto>> GetPagedAsync(
         int pageSize,
         int pageNumber,
         Guid? warehouseId,
@@ -44,7 +46,7 @@ public sealed class InventoryService(
         ValidateOptionalId(warehouseId, "Mã định danh kho không hợp lệ.");
         ValidateOptionalId(productId, "Mã định danh sản phẩm không hợp lệ.");
 
-        var (inventories, totalCount) = await inventoryRepository.GetAllAsync(
+        var (inventoryBalances, totalCount) = await inventoryRepository.GetPagedAsync(
             pageSize,
             pageNumber,
             warehouseId,
@@ -59,15 +61,15 @@ public sealed class InventoryService(
             PageNumber = pageNumber,
             PageSize = pageSize,
             TotalCount = totalCount,
-            Items = mapper.Map<List<InventoryDto>>(inventories)
+            Items = mapper.Map<List<InventoryDto>>(inventoryBalances)
         };
     }
 
-    public async Task<PagedResult<InventoryTransactionDto>> GetListTransaction(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
+    public async Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
     {
         ValidatePagination(pageSize, pageNumber);
 
-        var (inventoryTransactions, totalCount) = await inventoryRepository.GetAllTransactionAsync(
+        var (inventoryTransactions, totalCount) = await inventoryRepository.GetTransactionsAsync(
             pageSize,
             pageNumber,
             warehouseId,
@@ -84,16 +86,16 @@ public sealed class InventoryService(
             PageSize = pageSize,
         };
     }
-    public async Task TransferAsync(InventoryTransferRequestDto request, Guid userId)
+    public async Task TransferAsync(TransferInventoryRequestDto request, Guid userId)
     {
         if (request is null)
             throw new ValidationException("Thông tin phiếu chuyển kho là bắt buộc.");
 
         ValidateTransferRequest(request, userId);
 
-        if (!await warehouseRepository.ExistsByIdAsync(request.WarehouseFromId))
+        if (!await warehouseRepository.ExistsByIdAsync(request.SourceWarehouseId))
             throw new NotFoundException("Kho nguồn không tồn tại.");
-        if (!await warehouseRepository.ExistsByIdAsync(request.WarehouseToId))
+        if (!await warehouseRepository.ExistsByIdAsync(request.DestinationWarehouseId))
             throw new NotFoundException("Kho đích không tồn tại.");
         var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
 
@@ -103,7 +105,7 @@ public sealed class InventoryService(
         {
             if (hasClientReference &&
                      await inventoryRepository.TransactionReferenceExistsAsync(
-                         request.WarehouseFromId,
+                         request.SourceWarehouseId,
                          InventoryTransactionType.TransferOut,
                          reference))
             {
@@ -114,87 +116,87 @@ public sealed class InventoryService(
                 if (product.ProductId == Guid.Empty) { throw new ValidationException("Mã sản phảm là bắt buộc"); }
                 if (!await productRepository.ExistByIdAsync(product.ProductId))
                     throw new NotFoundException("Sản phẩm không tồn tại.");
-                var inventoryFrom = await inventoryRepository.GetAsync(
-                    request.WarehouseFromId,
+                var sourceInventory = await inventoryRepository.GetByWarehouseAndProductAsync(
+                    request.SourceWarehouseId,
                     product.ProductId);
-                if (inventoryFrom is null)
+                if (sourceInventory is null)
                     throw new NotFoundException("Kho nguồn chưa có tồn kho của sản phẩm này.");
-                var totalProductRequest = product.Lots.Sum(l => l.Quantity);
-                if (inventoryFrom.AvailableQuantity < totalProductRequest)
+                var requestedQuantity = product.Lots.Sum(lot => lot.Quantity);
+                if (sourceInventory.AvailableQuantity < requestedQuantity)
                     throw new ConflictException("Số lượng khả dụng tại kho nguồn không đủ để chuyển.");
 
-                var inventoryTo = await inventoryRepository.GetAsync(
-                   request.WarehouseToId,
+                var destinationInventory = await inventoryRepository.GetByWarehouseAndProductAsync(
+                   request.DestinationWarehouseId,
                    product.ProductId);
-                if (inventoryTo is null)
+                if (destinationInventory is null)
                 {
-                    inventoryTo = CreateInventory(request.WarehouseToId, product.ProductId);
-                    await inventoryRepository.AddAsync(inventoryTo);
+                    destinationInventory = CreateInventoryBalance(request.DestinationWarehouseId, product.ProductId);
+                    await inventoryRepository.AddInventoryAsync(destinationInventory);
                 }
 
 
                 foreach (var lotRequest in product.Lots)
                 {
                     var batchNumber = lotRequest.BatchNumber.Trim();
-                    var lotFrom = await inventoryRepository.GetInventoryItemAsync(inventoryFrom.Id, batchNumber);
-                    if (lotFrom is null)
+                    var sourceLot = await inventoryRepository.GetInventoryItemAsync(sourceInventory.Id, batchNumber);
+                    if (sourceLot is null)
                     {
                         throw new NotFoundException("Kho nguồn không tồn tại lô hàng này");
                     }
-                    if (lotFrom.Quantity < lotRequest.Quantity)
+                    if (sourceLot.Quantity < lotRequest.Quantity)
                     {
                         throw new ConflictException("Số lượng khả dụng trong lô tại kho nguồn không đủ để chuyển.");
                     }
-                    lotFrom.Quantity -= lotRequest.Quantity;
+                    sourceLot.Quantity -= lotRequest.Quantity;
 
-                    var lotTo = await inventoryRepository.GetInventoryItemAsync(inventoryTo.Id, batchNumber);
-                    if (lotTo is null)
+                    var destinationLot = await inventoryRepository.GetInventoryItemAsync(destinationInventory.Id, batchNumber);
+                    if (destinationLot is null)
                     {
-                        lotTo = CreateTransferredInventoryItem(
-    lotFrom,
-    inventoryTo.Id,
+                        destinationLot = CreateTransferredInventoryItem(
+    sourceLot,
+    destinationInventory.Id,
     lotRequest.Quantity,
-    lotRequest.Location);
-                        await inventoryRepository.AddInventoryItem(lotTo);
+    lotRequest.DestinationLocation);
+                        await inventoryRepository.AddInventoryItemAsync(destinationLot);
                     }
                     else
                     {
-                        if (lotTo.UnitCost != lotFrom.UnitCost ||
-    lotTo.ManufactureDate != lotFrom.ManufactureDate ||
-    lotTo.ExpiryDate != lotFrom.ExpiryDate)
+                        if (destinationLot.UnitCost != sourceLot.UnitCost ||
+    destinationLot.ManufactureDate != sourceLot.ManufactureDate ||
+    destinationLot.ExpiryDate != sourceLot.ExpiryDate)
                         {
                             throw new ConflictException(
-                                $"Lô '{lotFrom.BatchNumber}' tại kho đích có thông tin không khớp với kho nguồn.");
+                                $"Lô '{sourceLot.BatchNumber}' tại kho đích có thông tin không khớp với kho nguồn.");
                         }
-                        lotTo.Quantity = checked(
-                            lotTo.Quantity + lotRequest.Quantity);
+                        destinationLot.Quantity = checked(
+                            destinationLot.Quantity + lotRequest.Quantity);
                     }
                     await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                  request.WarehouseFromId,
+                  request.SourceWarehouseId,
                   product.ProductId,
                   userId,
                   InventoryTransactionType.TransferOut,
                   lotRequest.Quantity,
                   reference,
                   request.Notes,
-                  lotFrom.Id));
+                  sourceLot.Id));
 
                     await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                        request.WarehouseToId,
+                        request.DestinationWarehouseId,
                         product.ProductId,
                         userId,
                         InventoryTransactionType.TransferIn,
                         lotRequest.Quantity,
                         reference,
                         request.Notes,
-                        lotTo.Id));
+                        destinationLot.Id));
 
                 }
-                inventoryFrom.QuantityOnHand -= totalProductRequest;
-                inventoryFrom.LastUpdate = DateTime.UtcNow;
+                sourceInventory.QuantityOnHand -= requestedQuantity;
+                sourceInventory.LastUpdatedAt = DateTime.UtcNow;
 
-                inventoryTo.QuantityOnHand = checked(inventoryTo.QuantityOnHand + totalProductRequest);
-                inventoryTo.LastUpdate = DateTime.UtcNow;
+                destinationInventory.QuantityOnHand = checked(destinationInventory.QuantityOnHand + requestedQuantity);
+                destinationInventory.LastUpdatedAt = DateTime.UtcNow;
 
             }
         });
@@ -218,14 +220,14 @@ public sealed class InventoryService(
     };
 
     private static void ValidateTransferRequest(
-        InventoryTransferRequestDto request,
+        TransferInventoryRequestDto request,
         Guid userId)
     {
         if (userId == Guid.Empty)
             throw new ValidationException("Người thực hiện phiếu chuyển kho không hợp lệ.");
-        if (request.WarehouseFromId == Guid.Empty || request.WarehouseToId == Guid.Empty)
+        if (request.SourceWarehouseId == Guid.Empty || request.DestinationWarehouseId == Guid.Empty)
             throw new ValidationException("Kho nguồn và kho đích là bắt buộc.");
-        if (request.WarehouseFromId == request.WarehouseToId)
+        if (request.SourceWarehouseId == request.DestinationWarehouseId)
             throw new ValidationException("Kho nguồn và kho đích phải khác nhau.");
         if (request.Products is null || request.Products.Count == 0)
             throw new ValidationException("Phiếu chuyển kho phải có ít nhất một sản phẩm.");
@@ -272,91 +274,107 @@ public sealed class InventoryService(
             throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu chuyển kho.");
     }
     //giữ hàng/hủy giữ hàng
-    public async Task<InventoryDto> Reservation(InventoryReservationRequestDto request, Guid userId)
+    private static void ValidateReservationRequest(ReserveInventoryRequestDto request, Guid userId)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        ValidateMovement(request.WarehouseId, request.ProductId, request.Quantity);
-        if (userId == Guid.Empty)
-            throw new ValidationException("Người thực hiện là bắt buộc.");
+        if (request.WarehouseId == Guid.Empty)
+            throw new ValidationException("Mã kho là bắt buộc");
+        if (request.Products is null || request.Products.Count == 0)
+        {
+            throw new ValidationException("Danh sách phải có ít nhất một sản phẩm");
+        }
+        foreach (var product in request.Products)
+        {
+            if (product.ProductId == Guid.Empty)
+                throw new ValidationException("Mã sản phẩm là bắt buộc");
+            if (product.Quantity <= 0)
+                throw new ValidationException("Số lượng phải lớn hơn 0.");
+            if (userId == Guid.Empty)
+                throw new ValidationException("Người thực hiện là bắt buộc.");
 
-        var reference = NormalizeRequiredReference(request.Reference);
-        if (!request.IsCancel && request.ExpiresAt.HasValue && request.ExpiresAt.Value <= DateTime.UtcNow)
+        }
+        if (!request.IsCancellation && request.ExpiresAt.HasValue && request.ExpiresAt.Value <= DateTime.UtcNow)
             throw new ValidationException("Thời hạn giữ hàng phải lớn hơn thời điểm hiện tại.");
 
-        await EnsureProductAndWarehouseExistAsync(request.ProductId, request.WarehouseId);
+    }
+    public async Task<List<InventoryDto>> ReserveAsync(ReserveInventoryRequestDto request, Guid userId)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateReservationRequest(request, userId);
+        var reference = NormalizeRequiredReference(request.Reference);
 
-        Inventories? updatedInventory = null;
-        var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
+        var updatedInventories = new List<InventoryBalance>();
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
-            var inventory = await inventoryRepository.GetAsync(request.WarehouseId, request.ProductId);
-            if (inventory is null)
-                throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
-
-            var activeReservation = await inventoryRepository.GetActiveReservationAsync(
-                inventory.Id,
-                reference);
-
-            if (request.IsCancel)
+            foreach (var product in request.Products)
             {
-                if (activeReservation is null)
-                    throw new NotFoundException("Không tìm thấy lượt giữ hàng đang hoạt động.");
-                if (activeReservation.Quantity != request.Quantity)
-                    throw new ConflictException("Số lượng hủy phải bằng số lượng đang được giữ.");
-                if (inventory.ReservedQuantity < activeReservation.Quantity)
-                    throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
+                await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
+                var inventory = await inventoryRepository.GetByWarehouseAndProductAsync(request.WarehouseId, product.ProductId);
+                if (inventory is null)
+                    throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
 
-                inventory.ReservedQuantity -= activeReservation.Quantity;
-                activeReservation.Status = InventoryReservationStatus.Released;
-            }
-            else
-            {
-                if (activeReservation is not null)
-                    throw new ConflictException("Yêu cầu này đã giữ hàng trước đó.");
-                if (inventory.AvailableQuantity < request.Quantity)
-                    throw new ConflictException("Số lượng khả dụng không đủ để giữ hàng.");
-
-                inventory.ReservedQuantity = checked(inventory.ReservedQuantity + request.Quantity);
-                await inventoryRepository.AddReservationAsync(new InventoryReservation
+                var activeReservation = await inventoryRepository.GetActiveReservationAsync(
+                    inventory.Id,
+                    reference);
+                if (request.IsCancellation)
                 {
-                    Id = Guid.NewGuid(),
-                    InventoryId = inventory.Id,
-                    Reference = reference,
-                    Quantity = request.Quantity,
-                    Status = InventoryReservationStatus.Active,
-                    CreatedByUserId = userId,
-                    CreatedAt = DateTime.UtcNow,
-                    ExpiresAt = request.ExpiresAt
-                });
+                    if (activeReservation is null)
+                        throw new NotFoundException("Không tìm thấy lượt giữ hàng đang hoạt động.");
+                    if (activeReservation.Quantity != product.Quantity)
+                        throw new ConflictException("Số lượng hủy phải bằng số lượng đang được giữ.");
+                    if (inventory.ReservedQuantity < activeReservation.Quantity)
+                        throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
+
+                    inventory.ReservedQuantity -= activeReservation.Quantity;
+                    activeReservation.Status = InventoryReservationStatus.Released;
+                }
+                else
+                {
+                    if (activeReservation is not null)
+                        throw new ConflictException("Yêu cầu này đã giữ hàng trước đó.");
+                    if (inventory.AvailableQuantity < product.Quantity)
+                        throw new ConflictException("Số lượng khả dụng không đủ để giữ hàng.");
+
+                    inventory.ReservedQuantity = checked(inventory.ReservedQuantity + product.Quantity);
+                    await inventoryRepository.AddReservationAsync(new InventoryReservation
+                    {
+                        Id = Guid.NewGuid(),
+                        InventoryId = inventory.Id,
+                        Reference = reference,
+                        Quantity = product.Quantity,
+                        Status = InventoryReservationStatus.Active,
+                        CreatedByUserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        ExpiresAt = request.ExpiresAt
+                    });
+                }
+                inventory.LastUpdatedAt = DateTime.UtcNow;
+                updatedInventories.Add(inventory);
             }
 
-            inventory.LastUpdate = DateTime.UtcNow;
-
-            updatedInventory = inventory;
         });
 
-        return Map(updatedInventory!);
+        return updatedInventories.Select(MapToDto).ToList();
     }
 
     //hết hạn giữ hàng
-    public async Task ReservationExpiredAsync()
+    public async Task ExpireReservationsAsync()
     {
-        var listReservation = await inventoryRepository.GetAllReservationExpired();
-        if (listReservation.Count <= 0)
+        var expiredReservations = await inventoryRepository.GetExpiredActiveReservationsAsync();
+        if (expiredReservations.Count <= 0)
         {
             throw new NotFoundException("Không có sản phẩm nào tới hết hạn giữ hàng");
         }
-        foreach (var reservation in listReservation)
+        foreach (var reservation in expiredReservations)
         {
             reservation.Status = InventoryReservationStatus.Expired;
-            var inventory = await inventoryRepository.GetById(reservation.InventoryId);
+            var inventory = await inventoryRepository.GetByIdAsync(reservation.InventoryId);
             if (inventory is null)
             {
                 throw new NotFoundException("Không tìm thấy thông tin tồn kho tương ứng với sản phẩm hết hạn giữ hàng");
             }
             inventory.ReservedQuantity -= reservation.Quantity;
-            await inventoryRepository.UpdateRevationAsync(reservation);
-            await inventoryRepository.UpdateAsync(inventory);
+            await inventoryRepository.UpdateReservationAsync(reservation);
+            await inventoryRepository.UpdateInventoryAsync(inventory);
         }
     }
     //nhập kho
@@ -368,7 +386,7 @@ public sealed class InventoryService(
 
         var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
         var reference = NormalizeOrCreateReference(request.Reference);
-        var updatedInventories = new List<Inventories>();
+        var updatedInventories = new List<InventoryBalance>();
 
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
@@ -386,7 +404,7 @@ public sealed class InventoryService(
             foreach (var product in request.Products)
             {
                 await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
-                var inventory = await ExecuteProductAsync(
+                var inventory = await ReceiveProductAsync(
                     request,
                     product,
                     userId,
@@ -396,23 +414,23 @@ public sealed class InventoryService(
             }
         });
 
-        return updatedInventories.Select(Map).ToList();
+        return updatedInventories.Select(MapToDto).ToList();
     }
 
-    private async Task<Inventories> ExecuteProductAsync(
+    private async Task<InventoryBalance> ReceiveProductAsync(
         ReceiveInventoryRequestDto request,
         ReceiveProductDto productRequest,
         Guid userId,
         string reference)
     {
-        var inventory = await inventoryRepository.GetAsync(
+        var inventory = await inventoryRepository.GetByWarehouseAndProductAsync(
             request.WarehouseId,
             productRequest.ProductId);
 
         if (inventory is null)
         {
-            inventory = CreateInventory(request.WarehouseId, productRequest.ProductId);
-            await inventoryRepository.AddAsync(inventory);
+            inventory = CreateInventoryBalance(request.WarehouseId, productRequest.ProductId);
+            await inventoryRepository.AddInventoryAsync(inventory);
         }
 
         foreach (var lot in productRequest.Lots)
@@ -425,7 +443,7 @@ public sealed class InventoryService(
             if (inventoryItem is null)
             {
                 inventoryItem = CreateInventoryItem(lot, inventory.Id, batchNumber);
-                await inventoryRepository.AddInventoryItem(inventoryItem);
+                await inventoryRepository.AddInventoryItemAsync(inventoryItem);
             }
             else
             {
@@ -446,7 +464,7 @@ public sealed class InventoryService(
 
         var receivedQuantity = productRequest.Lots.Sum(lot => lot.Quantity);
         inventory.QuantityOnHand = checked(inventory.QuantityOnHand + receivedQuantity);
-        inventory.LastUpdate = DateTime.UtcNow;
+        inventory.LastUpdatedAt = DateTime.UtcNow;
 
         return inventory;
     }
@@ -609,7 +627,7 @@ public sealed class InventoryService(
         var hasClientReference = !string.IsNullOrWhiteSpace(request.Reference);
         var reference = NormalizeOrCreateReference(request.Reference);
 
-        var updatedInventories = new List<Inventories>();
+        var updatedInventories = new List<InventoryBalance>();
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
             if (hasClientReference)
@@ -623,7 +641,7 @@ public sealed class InventoryService(
             foreach (var product in request.Products)
             {
                 InventoryReservation? activeReservation = null;
-                var inventory = await inventoryRepository.GetAsync(request.WarehouseId, product.ProductId);
+                var inventory = await inventoryRepository.GetByWarehouseAndProductAsync(request.WarehouseId, product.ProductId);
                 if (inventory is null)
                     throw new NotFoundException("Không tìm thấy tồn kho của sản phẩm tại kho này.");
                 if (hasClientReference)
@@ -633,7 +651,7 @@ public sealed class InventoryService(
                         reference);
                 }
 
-                var totalProductRequest = product.Lots.Sum(x => x.Quantity);
+                var requestedQuantity = product.Lots.Sum(lot => lot.Quantity);
 
                 if (activeReservation is not null)
                 {
@@ -643,15 +661,15 @@ public sealed class InventoryService(
                         throw new ConflictException("Lượt giữ hàng đã hết hạn.");
                     }
 
-                    if (activeReservation.Quantity != totalProductRequest)
+                    if (activeReservation.Quantity != requestedQuantity)
                         throw new ConflictException("Số lượng xuất phải bằng số lượng đang được giữ.");
-                    if (inventory.QuantityOnHand < totalProductRequest ||
-                        inventory.ReservedQuantity < totalProductRequest)
+                    if (inventory.QuantityOnHand < requestedQuantity ||
+                        inventory.ReservedQuantity < requestedQuantity)
                     {
                         throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
                     }
                 }
-                else if (inventory.AvailableQuantity < totalProductRequest)
+                else if (inventory.AvailableQuantity < requestedQuantity)
                 {
                     throw new ConflictException("Số lượng khả dụng không đủ để xuất kho.");
                 }
@@ -689,66 +707,77 @@ public sealed class InventoryService(
 
                 if (activeReservation is not null)
                 {
-                    inventory.ReservedQuantity -= totalProductRequest;
+                    inventory.ReservedQuantity -= requestedQuantity;
                     activeReservation.Status = InventoryReservationStatus.Fulfilled;
                 }
 
-                inventory.QuantityOnHand -= totalProductRequest;
-                inventory.LastUpdate = DateTime.UtcNow;
+                inventory.QuantityOnHand -= requestedQuantity;
+                inventory.LastUpdatedAt = DateTime.UtcNow;
 
                 updatedInventories.Add(inventory);
             }
         });
 
-        return updatedInventories.Select(Map).ToList();
+        return updatedInventories.Select(MapToDto).ToList();
     }
     //kiểm kê
-    public async Task<InventoryDto> AdjustAsync(
-        InventoryAdjustmentRequestDto request,
+    public async Task<List<InventoryDto>> AdjustAsync(
+        AdjustInventoryRequestDto request,
         Guid userId)
     {
-        if (request.WarehouseId == Guid.Empty || request.ProductId == Guid.Empty || request.Notes is null)
-            throw new ValidationException("Kho, sản phẩm và lý do là bắt buộc.");
-        if (request.ActualQuantity < 0)
-            throw new ValidationException("Số lượng kiểm kê không được âm.");
-
-        await EnsureProductAndWarehouseExistAsync(request.ProductId, request.WarehouseId);
-
-        Inventories? updatedInventory = null;
+        var reference = NormalizeOrCreateReference(request.Reference);
+        var updatedInventories = new List<InventoryBalance>();
         await inventoryRepository.ExecuteInTransactionAsync(async () =>
         {
-            var inventory = await inventoryRepository.GetAsync(request.WarehouseId, request.ProductId);
-            if (inventory is null)
+            foreach (var product in request.Products)
             {
-                inventory = CreateInventory(request.WarehouseId, request.ProductId);
-                await inventoryRepository.AddAsync(inventory);
+                if (request.WarehouseId == Guid.Empty || product.ProductId == Guid.Empty || request.Notes is null)
+                    throw new ValidationException("Kho, sản phẩm và lý do là bắt buộc.");
+                await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
+                var inventory = await inventoryRepository.GetByWarehouseAndProductAsync(request.WarehouseId, product.ProductId);
+                if (inventory is null)
+                {
+                    throw new NotFoundException("Không tìm thấy tồn kho cần kiểm kê.");
+                }
+                var totalDifference = 0;
+                foreach (var lotRequest in product.Lots)
+                {
+                    if (lotRequest.ActualQuantity < 0)
+                        throw new ValidationException("Số lượng kiểm kê không được âm.");
+                    var lot = await inventoryRepository.GetInventoryItemAsync(inventory.Id, lotRequest.BatchNumber);
+                    if (lot is null)
+                    { throw new NotFoundException("Lô hàng không tồn tại"); }
+                    var quantityDifference = lotRequest.ActualQuantity - lot.Quantity;
+                    lot.Quantity = lotRequest.ActualQuantity;
+
+                    if (quantityDifference != 0)
+                    {
+                        await inventoryRepository.AddTransactionAsync(CreateTransaction(
+                            request.WarehouseId,
+                            product.ProductId,
+                            userId,
+                            quantityDifference > 0
+                                ? InventoryTransactionType.AdjustmentIncrease
+                                : InventoryTransactionType.AdjustmentDecrease,
+                            Math.Abs(quantityDifference),
+                            reference,
+                            request.Notes,
+                            lot.Id));
+                    }
+                    totalDifference += quantityDifference;
+                }
+                var newQuantityOnHand = inventory.QuantityOnHand + totalDifference;
+                if(newQuantityOnHand < inventory.ReservedQuantity)
+                {
+                    throw new ConflictException("Số lượng kiểm kê không được nhỏ hơn số lượng đang giữ");
+                }
+                inventory.QuantityOnHand = newQuantityOnHand;
+                inventory.LastUpdatedAt = DateTime.UtcNow;
+                updatedInventories.Add(inventory);
             }
-
-            if (request.ActualQuantity < inventory.ReservedQuantity)
-                throw new ConflictException("Số lượng kiểm kê không thể nhỏ hơn số lượng đang được giữ chỗ.");
-
-            var difference = request.ActualQuantity - inventory.QuantityOnHand;
-            inventory.QuantityOnHand = request.ActualQuantity;
-            inventory.LastUpdate = DateTime.UtcNow;
-
-            if (difference != 0)
-            {
-                await inventoryRepository.AddTransactionAsync(CreateTransaction(
-                    request.WarehouseId,
-                    request.ProductId,
-                    userId,
-                    difference > 0
-                        ? InventoryTransactionType.AdjustmentIncrease
-                        : InventoryTransactionType.AdjustmentDecrease,
-                    Math.Abs(difference),
-                    request.Reference,
-                    request.Notes));
-            }
-
-            updatedInventory = inventory;
         });
 
-        return Map(updatedInventory!);
+        return updatedInventories.Select(MapToDto).ToList();
     }
 
     private async Task EnsureProductAndWarehouseExistAsync(Guid productId, Guid warehouseId)
@@ -758,15 +787,6 @@ public sealed class InventoryService(
         if (!await warehouseRepository.ExistsByIdAsync(warehouseId))
             throw new NotFoundException("Kho hàng không tồn tại.");
     }
-
-    private static void ValidateMovement(Guid warehouseId, Guid productId, int quantity)
-    {
-        if (warehouseId == Guid.Empty || productId == Guid.Empty)
-            throw new ValidationException("Kho và sản phẩm là bắt buộc.");
-        if (quantity <= 0)
-            throw new ValidationException("Số lượng phải lớn hơn 0.");
-    }
-
     private static void ValidatePagination(int pageSize, int pageNumber)
     {
         if (pageNumber < 1)
@@ -781,14 +801,14 @@ public sealed class InventoryService(
             throw new ValidationException(message);
     }
 
-    private static Inventories CreateInventory(Guid warehouseId, Guid productId) => new()
+    private static InventoryBalance CreateInventoryBalance(Guid warehouseId, Guid productId) => new()
     {
         Id = Guid.NewGuid(),
         WarehouseId = warehouseId,
         ProductId = productId,
         QuantityOnHand = 0,
         ReservedQuantity = 0,
-        LastUpdate = DateTime.UtcNow
+        LastUpdatedAt = DateTime.UtcNow
     };
 
     private static InventoryTransaction CreateTransaction(
@@ -832,7 +852,7 @@ public sealed class InventoryService(
         return normalizedReference;
     }
 
-    private static InventoryDto Map(Inventories inventory) => new()
+    private static InventoryDto MapToDto(InventoryBalance inventory) => new()
     {
         Id = inventory.Id,
         WarehouseId = inventory.WarehouseId,
@@ -842,16 +862,16 @@ public sealed class InventoryService(
         QuantityOnHand = inventory.QuantityOnHand,
         ReservedQuantity = inventory.ReservedQuantity,
         AvailableQuantity = inventory.AvailableQuantity,
-        LastUpdate = inventory.LastUpdate
+        LastUpdatedAt = inventory.LastUpdatedAt
     };
 
-    public async Task<List<InventoryDto>> GetLowOnStockAsync()
+    public async Task<List<InventoryDto>> GetLowStockAsync()
     {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetLowOnStockAsync());
+        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetLowStockAsync());
     }
 
-    public async Task<List<InventoryDto>> GetExcessGoodsAsync()
+    public async Task<List<InventoryDto>> GetExcessStockAsync()
     {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetExcessGoodsAsync());
+        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetExcessStockAsync());
     }
 }

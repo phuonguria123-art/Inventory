@@ -1,0 +1,28 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Inventory.Domain.Entities;
+
+/// <summary>
+/// Represents the stock balance of one product at one warehouse.
+/// </summary>
+public sealed class InventoryBalance
+{
+    public Guid Id { get; set; }
+    public Guid WarehouseId { get; set; }
+    public Guid ProductId { get; set; }
+    public int MinStock { get; set; }
+    public int MaxStock { get; set; }
+    public string? Description { get; set; }
+    public string? Status { get; set; }
+    public int QuantityOnHand { get; set; }
+    public int ReservedQuantity { get; set; }
+
+    [NotMapped]
+    public int AvailableQuantity => QuantityOnHand - ReservedQuantity;
+
+    public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+    public Warehouse Warehouse { get; set; } = null!;
+    public Product Product { get; set; } = null!;
+    public ICollection<InventoryReservation> Reservations { get; set; } = [];
+    public ICollection<InventoryItem> Items { get; set; } = [];
+}
