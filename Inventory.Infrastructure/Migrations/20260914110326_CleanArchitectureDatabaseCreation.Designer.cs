@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inventory.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260908032740_AddInventoryReservations")]
-    partial class AddInventoryReservations
+    [Migration("20260914110326_CleanArchitectureDatabaseCreation")]
+    partial class CleanArchitectureDatabaseCreation
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace Inventory.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -34,8 +34,9 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("LastUpdate")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("LastUpdate");
 
                     b.Property<int>("MaxStock")
                         .HasColumnType("int");
@@ -65,7 +66,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("Inventories", t =>
+                    b.ToTable("Inventories", null, t =>
                         {
                             t.HasCheckConstraint("CK_Inventories_QuantityOnHand", "[QuantityOnHand] >= 0");
 
@@ -81,7 +82,8 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.Property<string>("BatchNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("DateReceived")
                         .HasColumnType("datetime2");
@@ -89,15 +91,16 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<DateTime?>("ExpiryDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("InventoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("ManufactureDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -106,16 +109,19 @@ namespace Inventory.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("InventoryId", "BatchNumber")
+                        .IsUnique();
 
-                    b.HasIndex("WarehouseId");
+                    b.ToTable("InventoryItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryItems_ExpiryDate", "[ExpiryDate] IS NULL OR [ManufactureDate] IS NULL OR [ExpiryDate] >= [ManufactureDate]");
 
-                    b.ToTable("InventoryItems");
+                            t.HasCheckConstraint("CK_InventoryItems_Quantity", "[Quantity] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryItems_UnitCost", "[UnitCost] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
@@ -967,7 +973,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.ToTable("Warehouses");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
                     b.HasOne("Inventory.Domain.Entities.Product", "Product")
                         .WithMany()
@@ -988,21 +994,13 @@ namespace Inventory.Infrastructure.Migrations
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryItem", b =>
                 {
-                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
+                    b.HasOne("Inventory.Domain.Entities.InventoryBalance", "Inventory")
+                        .WithMany("Items")
+                        .HasForeignKey("InventoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Inventory.Domain.Entities.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("Warehouse");
+                    b.Navigation("Inventory");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
@@ -1013,7 +1011,7 @@ namespace Inventory.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Inventory.Domain.Entities.Inventories", "Inventory")
+                    b.HasOne("Inventory.Domain.Entities.InventoryBalance", "Inventory")
                         .WithMany("Reservations")
                         .HasForeignKey("InventoryId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1123,8 +1121,10 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
+                    b.Navigation("Items");
+
                     b.Navigation("Reservations");
                 });
 

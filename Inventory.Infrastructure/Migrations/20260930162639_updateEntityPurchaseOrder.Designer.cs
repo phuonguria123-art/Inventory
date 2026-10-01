@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inventory.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260908032740_AddInventoryReservations")]
-    partial class AddInventoryReservations
+    [Migration("20260930162639_updateEntityPurchaseOrder")]
+    partial class updateEntityPurchaseOrder
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace Inventory.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -34,8 +34,9 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("LastUpdate")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("LastUpdate");
 
                     b.Property<int>("MaxStock")
                         .HasColumnType("int");
@@ -65,7 +66,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.HasIndex("WarehouseId", "ProductId")
                         .IsUnique();
 
-                    b.ToTable("Inventories", t =>
+                    b.ToTable("Inventories", null, t =>
                         {
                             t.HasCheckConstraint("CK_Inventories_QuantityOnHand", "[QuantityOnHand] >= 0");
 
@@ -81,7 +82,8 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.Property<string>("BatchNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("DateReceived")
                         .HasColumnType("datetime2");
@@ -89,15 +91,16 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<DateTime?>("ExpiryDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("InventoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("ManufactureDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -106,16 +109,19 @@ namespace Inventory.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("InventoryId", "BatchNumber")
+                        .IsUnique();
 
-                    b.HasIndex("WarehouseId");
+                    b.ToTable("InventoryItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryItems_ExpiryDate", "[ExpiryDate] IS NULL OR [ManufactureDate] IS NULL OR [ExpiryDate] >= [ManufactureDate]");
 
-                    b.ToTable("InventoryItems");
+                            t.HasCheckConstraint("CK_InventoryItems_Quantity", "[Quantity] >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryItems_UnitCost", "[UnitCost] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
@@ -354,36 +360,66 @@ namespace Inventory.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("20000000-0000-0000-0000-000000000018"),
+                            Code = "order.read",
+                            Description = "Xem đơn mua hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000019"),
+                            Code = "order.create",
+                            Description = "Tạo đơn mua hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000020"),
+                            Code = "order.update",
+                            Description = "Cập nhật đơn mua hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000021"),
+                            Code = "order.receive",
+                            Description = "Nhận hàng đơn mua hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000022"),
+                            Code = "order.cancel",
+                            Description = "Hủy đơn mua hàng"
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000023"),
                             Code = "user.read",
                             Description = "Xem người dùng"
                         },
                         new
                         {
-                            Id = new Guid("20000000-0000-0000-0000-000000000019"),
+                            Id = new Guid("20000000-0000-0000-0000-000000000024"),
                             Code = "user.manage",
                             Description = "Quản lý người dùng"
                         },
                         new
                         {
-                            Id = new Guid("20000000-0000-0000-0000-000000000020"),
+                            Id = new Guid("20000000-0000-0000-0000-000000000025"),
                             Code = "role.read",
                             Description = "Xem vai trò"
                         },
                         new
                         {
-                            Id = new Guid("20000000-0000-0000-0000-000000000021"),
+                            Id = new Guid("20000000-0000-0000-0000-000000000026"),
                             Code = "role.manage",
                             Description = "Quản lý vai trò và phân quyền"
                         },
                         new
                         {
-                            Id = new Guid("20000000-0000-0000-0000-000000000022"),
+                            Id = new Guid("20000000-0000-0000-0000-000000000027"),
                             Code = "permission.read",
                             Description = "Xem danh mục quyền"
                         },
                         new
                         {
-                            Id = new Guid("20000000-0000-0000-0000-000000000023"),
+                            Id = new Guid("20000000-0000-0000-0000-000000000028"),
                             Code = "audit.read",
                             Description = "Xem lịch sử kiểm toán"
                         });
@@ -455,7 +491,7 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime2");
@@ -467,14 +503,14 @@ namespace Inventory.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime?>("ReceivedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ReceivedTo")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("ReceivingWarehouseId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ReiceiveDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("SendDate")
                         .HasColumnType("datetime2");
@@ -498,7 +534,14 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PurchanseOrders");
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ReceivingWarehouseId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("PurchaseOrders");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrderDetail", b =>
@@ -511,7 +554,6 @@ namespace Inventory.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("InventoryId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Note")
@@ -527,11 +569,10 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<Guid>("PurchaseOrderId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("ReceiveTime")
+                    b.Property<DateTime?>("ReceiveTime")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Type")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("UnitPrice")
@@ -544,7 +585,14 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.HasIndex("PurchaseOrderId");
 
-                    b.ToTable("PurchanseOrdersDetails");
+                    b.ToTable("PurchaseOrdersDetails", t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderDetail_ActualReceivedQuantity", "[ActualReceivedQuantity] >= 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderDetail_OrderedQuantity", "[OrderedQuantity] > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderDetail_UnitPrice", "[UnitPrice] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.Role", b =>
@@ -720,6 +768,31 @@ namespace Inventory.Infrastructure.Migrations
                         },
                         new
                         {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000024")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000025")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000026")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000027")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000001"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000028")
+                        },
+                        new
+                        {
                             RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
                             PermissionId = new Guid("20000000-0000-0000-0000-000000000001")
                         },
@@ -791,7 +864,32 @@ namespace Inventory.Infrastructure.Migrations
                         new
                         {
                             RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
-                            PermissionId = new Guid("20000000-0000-0000-0000-000000000023")
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000018")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000019")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000020")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000021")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000022")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000028")
                         },
                         new
                         {
@@ -827,6 +925,16 @@ namespace Inventory.Infrastructure.Migrations
                         {
                             RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
                             PermissionId = new Guid("20000000-0000-0000-0000-000000000016")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000018")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("10000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("20000000-0000-0000-0000-000000000020")
                         });
                 });
 
@@ -967,7 +1075,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.ToTable("Warehouses");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
                     b.HasOne("Inventory.Domain.Entities.Product", "Product")
                         .WithMany()
@@ -988,21 +1096,13 @@ namespace Inventory.Infrastructure.Migrations
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryItem", b =>
                 {
-                    b.HasOne("Inventory.Domain.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
+                    b.HasOne("Inventory.Domain.Entities.InventoryBalance", "Inventory")
+                        .WithMany("Items")
+                        .HasForeignKey("InventoryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Inventory.Domain.Entities.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-
-                    b.Navigation("Warehouse");
+                    b.Navigation("Inventory");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryReservation", b =>
@@ -1013,7 +1113,7 @@ namespace Inventory.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Inventory.Domain.Entities.Inventories", "Inventory")
+                    b.HasOne("Inventory.Domain.Entities.InventoryBalance", "Inventory")
                         .WithMany("Reservations")
                         .HasForeignKey("InventoryId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1066,6 +1166,25 @@ namespace Inventory.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrder", b =>
+                {
+                    b.HasOne("Inventory.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("ReceivingWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Inventory.Domain.Entities.Supplier", "Supplier")
+                        .WithMany("PurchaseOrders")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Supplier");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrderDetail", b =>
@@ -1123,8 +1242,10 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.Inventories", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
+                    b.Navigation("Items");
+
                     b.Navigation("Reservations");
                 });
 
@@ -1148,6 +1269,8 @@ namespace Inventory.Infrastructure.Migrations
             modelBuilder.Entity("Inventory.Domain.Entities.Supplier", b =>
                 {
                     b.Navigation("Products");
+
+                    b.Navigation("PurchaseOrders");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.User", b =>
@@ -1157,6 +1280,11 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("InventoryTransactions");
 
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Inventory.Domain.Entities.Warehouse", b =>
+                {
+                    b.Navigation("PurchaseOrders");
                 });
 #pragma warning restore 612, 618
         }

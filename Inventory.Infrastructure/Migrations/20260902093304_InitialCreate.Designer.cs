@@ -385,7 +385,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrder", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -439,7 +439,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.ToTable("PurchanseOrders");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrderDetail", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrderDetail", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -462,7 +462,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("PurchanseOrderId")
+                    b.Property<Guid>("PurchaseOrderId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("ReceiveTime")
@@ -480,7 +480,7 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("PurchanseOrderId");
+                    b.HasIndex("PurchaseOrderId");
 
                     b.ToTable("PurchanseOrdersDetails");
                 });
@@ -978,7 +978,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("Supplier");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrderDetail", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrderDetail", b =>
                 {
                     b.HasOne("Inventory.Domain.Entities.Product", "Product")
                         .WithMany()
@@ -986,15 +986,15 @@ namespace Inventory.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Inventory.Domain.Entities.PurchanseOrder", "PurchanseOrder")
+                    b.HasOne("Inventory.Domain.Entities.PurchaseOrder", "PurchaseOrder")
                         .WithMany("OrderDetails")
-                        .HasForeignKey("PurchanseOrderId")
+                        .HasForeignKey("PurchaseOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
 
-                    b.Navigation("PurchanseOrder");
+                    b.Navigation("PurchaseOrder");
                 });
 
             modelBuilder.Entity("Inventory.Domain.Entities.RolePermission", b =>
@@ -1038,7 +1038,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.Navigation("RolePermissions");
                 });
 
-            modelBuilder.Entity("Inventory.Domain.Entities.PurchanseOrder", b =>
+            modelBuilder.Entity("Inventory.Domain.Entities.PurchaseOrder", b =>
                 {
                     b.Navigation("OrderDetails");
                 });

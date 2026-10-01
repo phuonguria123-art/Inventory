@@ -17,23 +17,23 @@ namespace Inventory.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<PurchanseOrderDetail?> GetAsync(Guid id)
+        public async Task<PurchaseOrderDetail?> GetAsync(Guid id)
         {
-            return await _context.PurchanseOrdersDetails.FindAsync(id);
+            return await _context.PurchaseOrdersDetails.FindAsync(id);
         }
-        public async Task<List<PurchanseOrderDetail>> GetListAsync()
+        public async Task<List<PurchaseOrderDetail>> GetListAsync()
         {
-            return await _context.PurchanseOrdersDetails.ToListAsync();
+            return await _context.PurchaseOrdersDetails.ToListAsync();
         }
-        public async Task CreateAsync(PurchanseOrderDetail purchanseOrder)
+        public async Task CreateAsync(PurchaseOrderDetail PurchaseOrder)
         {
-            _context.PurchanseOrdersDetails.Add(purchanseOrder);
+            _context.PurchaseOrdersDetails.Add(PurchaseOrder);
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateAsync(PurchanseOrderDetail purchanseOrder)
+        public async Task UpdateAsync(PurchaseOrderDetail PurchaseOrder)
         {
-            _context.PurchanseOrdersDetails.Update(purchanseOrder);
+            _context.PurchaseOrdersDetails.Update(PurchaseOrder);
             await _context.SaveChangesAsync();
         }
     }

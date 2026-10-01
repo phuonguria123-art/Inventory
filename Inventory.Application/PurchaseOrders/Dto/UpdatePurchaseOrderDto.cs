@@ -10,8 +10,12 @@ namespace Inventory.Application.PurchaseOrders.Dto
 {
     public class UpdatePurchaseOrderDto
     {
-        public Guid Id { get; set; }
-        public string? ReceivedTo { get; set; }
-        public List<PurchanseOrderDetail> OrderDetails { get; set; } = new();
+        public required Guid SupplierId { set; get; }
+        public DateTime ExpectedReceiveDate { get; set; }
+        public required Guid ReceivingWarehouseId { get; set; }
+        public decimal? Freight { get; set; }
+        public string? Type { get; set; }
+        public decimal? TotalWeight { get; set; }
+        public List<UpdatePurchaseOrderDetailDto> OrderDetails { get; set; } = new();
     }
 }

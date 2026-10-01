@@ -17,5 +17,6 @@ namespace Inventory.Domain.Entities
         public string ContactPerson { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public ICollection<Product> Products { get; set; } = [];
+        public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = [];
     }
 }

@@ -52,7 +52,12 @@ internal static class AuthorizationSeedData
             PermissionCodes.InventoryIssue,
             PermissionCodes.InventoryTransfer,
             PermissionCodes.InventoryAdjust,
-            PermissionCodes.AuditRead
+            PermissionCodes.AuditRead,
+            PermissionCodes.PurchaseOrderRead,
+            PermissionCodes.PurchaseOrderCreate,
+            PermissionCodes.PurchaseOrderReceive,
+            PermissionCodes.PurchaseOrderUpdate,
+            PermissionCodes.PurchaseOrderCancel,
         };
 
         var staffPermissionCodes = new HashSet<string>
@@ -63,7 +68,9 @@ internal static class AuthorizationSeedData
             PermissionCodes.InventoryRead,
             PermissionCodes.InventoryReceive,
             PermissionCodes.InventoryIssue,
-            PermissionCodes.InventoryTransfer
+            PermissionCodes.InventoryTransfer,
+            PermissionCodes.PurchaseOrderRead,
+            PermissionCodes.PurchaseOrderUpdate,
         };
 
         var rolePermissions = permissions
@@ -116,12 +123,18 @@ internal static class AuthorizationSeedData
             CreatePermission(16, PermissionCodes.InventoryTransfer, "Chuyển hàng giữa các kho"),
             CreatePermission(17, PermissionCodes.InventoryAdjust, "Điều chỉnh tồn kho"),
 
-            CreatePermission(18, PermissionCodes.UserRead, "Xem người dùng"),
-            CreatePermission(19, PermissionCodes.UserManage, "Quản lý người dùng"),
-            CreatePermission(20, PermissionCodes.RoleRead, "Xem vai trò"),
-            CreatePermission(21, PermissionCodes.RoleManage, "Quản lý vai trò và phân quyền"),
-            CreatePermission(22, PermissionCodes.PermissionRead, "Xem danh mục quyền"),
-            CreatePermission(23, PermissionCodes.AuditRead, "Xem lịch sử kiểm toán")
+            CreatePermission(18, PermissionCodes.PurchaseOrderRead, "Xem đơn mua hàng"),
+            CreatePermission(19, PermissionCodes.PurchaseOrderCreate, "Tạo đơn mua hàng"),
+            CreatePermission(20, PermissionCodes.PurchaseOrderUpdate, "Cập nhật đơn mua hàng"),
+            CreatePermission(21, PermissionCodes.PurchaseOrderReceive, "Nhận hàng đơn mua hàng"),
+            CreatePermission(22, PermissionCodes.PurchaseOrderCancel, "Hủy đơn mua hàng"),
+
+            CreatePermission(23, PermissionCodes.UserRead, "Xem người dùng"),
+            CreatePermission(24, PermissionCodes.UserManage, "Quản lý người dùng"),
+            CreatePermission(25, PermissionCodes.RoleRead, "Xem vai trò"),
+            CreatePermission(26, PermissionCodes.RoleManage, "Quản lý vai trò và phân quyền"),
+            CreatePermission(27, PermissionCodes.PermissionRead, "Xem danh mục quyền"),
+            CreatePermission(28, PermissionCodes.AuditRead, "Xem lịch sử kiểm toán")
         ];
     }
 

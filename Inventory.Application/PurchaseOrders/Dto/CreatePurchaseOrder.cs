@@ -17,14 +17,13 @@ namespace Inventory.Application.PurchaseOrders.Dto
         /// <summary>
         /// Địa điểm nhận (có nhiều kho thì chọn kho nhận ) có thể đặt tên là ReceivingLocation
         /// </summary>
-        public required Guid WarehouseId { get; set; }
+        public required Guid ReceivingWarehouseId { get; set; }
         public decimal? Freight { get; set; }
         public string? Type { get; set; }
         /// <summary>
         /// tổng cuối(sau khi đã cộng các phí phụ)
         /// </summary>
-        public decimal? TotalPrice { get; set; }
-        public string? TotalWeight { get; set; }
-        public List<PurchanseOrderDetailDto>? Products { get; set; }
+        public decimal? TotalWeight { get; set; }
+        public List<PurchaseOrderDetailDto> Products { get; set; } = new();
     }
 }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Inventory.Domain.Entities
 {
-    public class PurchanseOrder
+    public class PurchaseOrder
     {
         public Guid Id { get; set; }
         public required string Code { get; set; }
@@ -23,13 +23,13 @@ namespace Inventory.Domain.Entities
         /// <summary>
         /// Ngày nhận thực tế
         /// </summary>
-        public DateTime? ReiceiveDate { get; set; }
+        public DateTime? ReceivedDate { get; set; }
         /// <summary>
         /// Nhân viên nhận
         /// </summary>
         public string? ReceivedTo { get; set; }
         /// <summary>
-        /// Địa điểm nhận (có nhiều kho thì chọn kho nhận ) có thể đặt tên là ReceivingLocation
+        /// Địa điểm nhận có thể đặt tên là ReceivingLocation
         /// </summary>
         public required Guid ReceivingWarehouseId { get; set; }
         public decimal? Freight { get; set; }
@@ -41,6 +41,8 @@ namespace Inventory.Domain.Entities
         public decimal? TotalWeight { get; set; }
         public string? Type { get; set; }
 
-        public virtual ICollection<PurchanseOrderDetail> OrderDetails { get; set; } = new List<PurchanseOrderDetail>();
+        public virtual ICollection<PurchaseOrderDetail> OrderDetails { get; set; } = new List<PurchaseOrderDetail>();
+        public Supplier Supplier { get; set; } = null!;
+        public Warehouse Warehouse { get; set; } = null!;
     }
 }

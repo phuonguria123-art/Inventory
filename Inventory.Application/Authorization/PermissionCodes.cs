@@ -30,6 +30,12 @@ public static class PermissionCodes
     public const string PermissionRead = "permission.read";
     public const string AuditRead = "audit.read";
 
+    public const string PurchaseOrderRead = "order.read";
+    public const string PurchaseOrderCreate = "order.create";
+    public const string PurchaseOrderReceive = "order.receive";
+    public const string PurchaseOrderUpdate = "order.update";
+    public const string PurchaseOrderCancel = "order.cancel";
+
     public static readonly IReadOnlyCollection<string> All =
    [
         ProductRead,
@@ -53,11 +59,18 @@ public static class PermissionCodes
     InventoryTransfer,
     InventoryAdjust,
 
+        PurchaseOrderRead,
+        PurchaseOrderUpdate,
+        PurchaseOrderCancel,
+        PurchaseOrderCreate,
+        PurchaseOrderReceive,
+
     UserRead,
     UserManage,
     RoleRead,
     RoleManage,
     PermissionRead,
-    AuditRead
+    AuditRead,
+
     ];
 }

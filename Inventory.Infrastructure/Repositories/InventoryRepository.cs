@@ -190,7 +190,8 @@ namespace Inventory.Infrastructure.Repositories
         }
         public async Task ExecuteInTransactionAsync(Func<Task> operation)
         {
-            if (!_context.Database.IsRelational())
+            if (!_context.Database.IsRelational() ||
+                _context.Database.CurrentTransaction is not null)
             {
                 await operation();
                 await _context.SaveChangesAsync();

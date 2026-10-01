@@ -5,6 +5,7 @@ using Inventory.Application.Interfaces;
 using Inventory.Application.Inventory;
 using Inventory.Application.Mappings;
 using Inventory.Application.Products.Services;
+using Inventory.Application.PurchaseOrders;
 using Inventory.Application.Users;
 using Inventory.Application.Users.Services;
 using Inventory.Domain.Exceptions;
@@ -57,6 +58,8 @@ namespace Inventory.Api
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+            builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+            builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
