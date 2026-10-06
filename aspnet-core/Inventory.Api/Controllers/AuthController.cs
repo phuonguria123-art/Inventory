@@ -34,7 +34,7 @@ namespace Inventory.Api.Controllers
             }
             return Ok(token);
         }
-        [HttpPost("refresh")]
+        [HttpPost("refresh-token")]
         public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
             var result = await authService.RefreshTokensAsync(request);

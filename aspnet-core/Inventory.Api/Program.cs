@@ -28,6 +28,7 @@ namespace Inventory.Api
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            const string frontendCorsPolicy = "Frontend";
             var jwtToken = builder.Configuration["AppSettings:Token"];
             if (string.IsNullOrWhiteSpace(jwtToken) || jwtToken.Length < 32)
                 throw new InvalidOperationException(
@@ -50,6 +51,21 @@ namespace Inventory.Api
         };
     });
             builder.Services.AddPermissionAuthorization();
+
+            var allowedOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? [];
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(frontendCorsPolicy, policy =>
+                {
+                    policy
+                        .WithOrigins(allowedOrigins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
@@ -139,6 +155,7 @@ namespace Inventory.Api
             });
 
             app.UseHttpsRedirection();
+            app.UseCors(frontendCorsPolicy);
             app.UseAuthentication();
             app.UseAuthorization();
 

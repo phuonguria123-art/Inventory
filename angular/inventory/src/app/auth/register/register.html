@@ -1,0 +1,91 @@
+<div class="register-wrap">
+    <div class="box">
+        <div class="box-form">
+            <div class="box-login-tab"></div>
+            <div class="box-login-title">
+                <div class="i i-login"></div>
+                <h2>Register</h2>
+            </div>
+            <div class="box-login">
+                <div class="fieldset-body" id="login_form">
+                    <div class="row">
+                        <div class="col-12">
+                            <button /* (click)="openLoginInfo()" */ class="b b-form i i-more"
+                                title="Mais Informações"></button>
+                        </div>
+                        <div class="col-12" [formGroup]="registerForm">
+                            <div class="row">
+                                <div class="col-12 col-md-6">
+                                    <p class="field">
+                                        <label for="user">E-Mail</label>
+                                        <input type="text" formControlName="email" title="Username" />
+                                        <span id="valida" class="i i-warning"></span>
+                                    </p>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <p class="field">
+                                        <label for="pass">Name</label>
+                                        <input type="text" formControlName="userName" title="Username" />
+                                        <span id="valida" class="i i-close"></span>
+                                    </p>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <p class="field">
+                                        <label for="pass">Password</label>
+                                        <input type="password" formControlName="password" title="Password" />
+                                        <span id="valida" class="i i-close"></span>
+                                    </p>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <p class="field">
+                                        <label for="pass">Confirm Password</label>
+                                        <input type="password" formControlName="confirmPassword" title="Password" />
+                                        <span id="valida" class="i i-close"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" id="do_login" value="REGISTER" title="Register"
+                        (click)="onSubmit()">Register</button>
+                </div>
+            </div>
+        </div>
+        <div class="box-info">
+            <div class="box-login-tab"></div>
+            <div class="box-login-title">
+                <div class="i i-login"></div>
+                <h2>Options</h2>
+            </div>
+            <div class="box-login">
+                <div class="fieldset-body" id="login_form">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="text-right clear-fix">
+                                <button type="button" /* (click)="closeLoginInfo()" */ class="b b-form i i-left"
+                                    title="Mais Informações"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="offset-1 col-10 offset-md-3 col-md-6 ">
+                        <div class="col-12">
+                            <!-- <button class="b-support" title="Forgot Password?">
+                Forgot Password?
+              </button> -->
+                            <button class="b-support" title="Contact Support">
+                                Contact Support
+                            </button>
+                            <button class="b-support" /* (click)="toLogin()" */ title="Sign up now!">
+                                Back To Login
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-backToLogin" title="Get Started" (click)="closeLoginInfo()">
+                    Back To Register
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

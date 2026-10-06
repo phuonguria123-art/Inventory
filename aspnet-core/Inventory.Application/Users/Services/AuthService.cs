@@ -77,6 +77,7 @@ namespace Inventory.Application.Users.Services
         {
             return new TokenResponseDto
             {
+                UserId = user.Id,
                 AccessToken = jwtTokenGenerator.CreateToken(user),
                 RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
             };
