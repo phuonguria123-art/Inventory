@@ -1,1 +1,22 @@
-<p>supplier works!</p>
+<section class="page">
+  <header class="page-header">
+    <div><span>Danh mục</span><h2>Nhà cung cấp</h2><p>Quản lý đối tác và thông tin liên hệ nhà cung cấp.</p></div>
+    <a class="primary-button" routerLink="/supplier/create">+ Thêm nhà cung cấp</a>
+  </header>
+
+  <div class="card">
+    @if (isLoading()) { <div class="status">Đang tải dữ liệu...</div> }
+    @else {
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mã NCC</th><th>Tên nhà cung cấp</th><th>Người liên hệ</th><th>Điện thoại</th><th>Email</th><th>Trạng thái</th><th class="actions">Thao tác</th></tr></thead>
+          <tbody>
+            @for (item of suppliers(); track item.id) {
+              <tr><td><span class="code">{{ item.code }}</span></td><td><strong>{{ item.name }}</strong><small>{{ item.address }}</small></td><td>{{ item.contactPerson }}</td><td>{{ item.phone }}</td><td>{{ item.email }}</td><td><span class="badge" [class.badge--inactive]="!item.isActive">{{ item.isActive ? 'Hoạt động' : 'Ngừng hoạt động' }}</span></td><td class="actions"><a [routerLink]="['/supplier/detail', item.id]">Xem</a><a [routerLink]="['/supplier/edit', item.id]">Sửa</a><button type="button" (click)="onDelete(item)">Xóa</button></td></tr>
+            } @empty { <tr><td colspan="7" class="empty">Chưa có nhà cung cấp nào.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

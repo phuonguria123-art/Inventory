@@ -1,0 +1,15 @@
+<section class="form-page">
+  <header class="form-header"><div><a routerLink="/warehouse">← Quay lại danh sách</a><h2>{{ mode === 'create' ? 'Thêm kho hàng' : mode === 'edit' ? 'Cập nhật kho hàng' : 'Chi tiết kho hàng' }}</h2><p>Thông tin cơ bản và khả năng lưu trữ của kho.</p></div>@if (mode === 'view') { <button type="button" class="secondary-button" (click)="enableEdit()">Chỉnh sửa</button> }</header>
+  <form class="form-card" [formGroup]="warehouseForm" (ngSubmit)="onSubmit()">
+    <div class="form-grid">
+      <label><span>Tên kho <b>*</b></span><input formControlName="name" placeholder="Ví dụ: Kho Hà Nội">@if (warehouseForm.controls.name.touched && warehouseForm.controls.name.invalid) { <small>Vui lòng nhập tên kho.</small> }</label>
+      <label><span>Mã kho <b>*</b></span><input formControlName="code" placeholder="Ví dụ: WH-HN"></label>
+      <label><span>Số điện thoại <b>*</b></span><input formControlName="phone" placeholder="Ví dụ: 0901234567">@if (warehouseForm.controls.phone.touched && warehouseForm.controls.phone.invalid) { <small>Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.</small> }</label>
+      <label><span>Dung tích <b>*</b></span><input formControlName="capacity" type="number" min="1" placeholder="0">@if (warehouseForm.controls.capacity.touched && warehouseForm.controls.capacity.invalid) { <small>Dung tích phải lớn hơn 0.</small> }</label>
+      <label class="full"><span>Địa chỉ <b>*</b></span><input formControlName="address" placeholder="Nhập địa chỉ kho"></label>
+      <label class="full"><span>Mô tả</span><textarea formControlName="description" rows="4" placeholder="Thông tin bổ sung về kho"></textarea></label>
+      <label class="check"><input type="checkbox" formControlName="isMain"><span>Đặt làm kho chính</span></label>
+    </div>
+    @if (mode !== 'view') { <footer class="form-actions"><a routerLink="/warehouse">Hủy</a><button type="submit">{{ mode === 'create' ? 'Tạo kho' : 'Lưu thay đổi' }}</button></footer> }
+  </form>
+</section>

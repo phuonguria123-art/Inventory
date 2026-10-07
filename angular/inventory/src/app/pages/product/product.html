@@ -1,2 +1,27 @@
-<p>product works!</p>
-<button (click)="logout()">logout</button>
+<section class="page">
+  <header class="page-header">
+    <div><span>Danh mục</span><h2>Sản phẩm</h2><p>Quản lý thông tin, giá và nhà cung cấp của sản phẩm.</p></div>
+    <a class="primary-button" routerLink="/product/create">+ Thêm sản phẩm</a>
+  </header>
+
+  <div class="card">
+    @if (isLoading()) { <div class="status">Đang tải dữ liệu...</div> }
+    @else {
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sản phẩm</th><th>Mã</th><th>Xuất xứ</th><th>Khối lượng</th><th>Đơn giá</th><th class="actions">Thao tác</th></tr></thead>
+          <tbody>
+            @for (item of products(); track item.id) {
+              <tr>
+                <td><div class="product-cell"><span class="product-image">{{ item.name.charAt(0) }}</span><strong>{{ item.name }}</strong></div></td>
+                <td><span class="code">{{ item.code }}</span></td><td>{{ item.origin || '—' }}</td><td>{{ item.weight }} kg</td><td>{{ item.unitPrice.toLocaleString('vi-VN') }} ₫</td>
+                <td class="actions"><a [routerLink]="['/product/detail', item.id]">Xem</a><a [routerLink]="['/product/edit', item.id]">Sửa</a><button type="button" (click)="onDelete(item)">Xóa</button></td>
+              </tr>
+            } @empty { <tr><td colspan="6" class="empty">Chưa có sản phẩm nào.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+      <footer class="pagination"><span>{{ totalCount() }} sản phẩm</span><div><button type="button" [disabled]="pageNumber() <= 1" (click)="changePage(pageNumber() - 1)">Trước</button><strong>{{ pageNumber() }} / {{ totalPages() || 1 }}</strong><button type="button" [disabled]="pageNumber() >= totalPages()" (click)="changePage(pageNumber() + 1)">Sau</button></div></footer>
+    }
+  </div>
+</section>

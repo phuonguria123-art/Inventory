@@ -6,8 +6,10 @@ using Inventory.Application.Inventory;
 using Inventory.Application.Mappings;
 using Inventory.Application.Products.Services;
 using Inventory.Application.PurchaseOrders;
+using Inventory.Application.Suppliers;
 using Inventory.Application.Users;
 using Inventory.Application.Users.Services;
+using Inventory.Application.Warehouses;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
 using Inventory.Infrastructure.Authentication;
@@ -72,7 +74,9 @@ namespace Inventory.Api
                     builder.Configuration.GetConnectionString("DBConnection")));
 
             builder.Services.AddScoped<IProductService, ProductService>();
+            builder.Services.AddScoped<ISupplierService, SupplierService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
+            builder.Services.AddScoped<IWarehouseService, WarehouseService>();
             builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
             builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();

@@ -13,8 +13,6 @@ import { ApplicationConfigService } from "./application-config.service";
 @Injectable({ providedIn: "root" })
 export class AuthService {
 
-    public currentUser: Observable<TokenModel | null>;
-
     private readonly applicationConfigService = inject(ApplicationConfigService);
     private readonly notification = inject(NotificationService);
     private readonly storage = inject(BrowserStorageService);
@@ -25,8 +23,6 @@ export class AuthService {
         private http: HttpClient,
         private router: Router
     ) {
-
-        this.currentUser = this.currentUserSubject.asObservable();
     }
     private readCurrentUser(): TokenModel | null {
         const storedUser = this.storage.getItem('currentUser');

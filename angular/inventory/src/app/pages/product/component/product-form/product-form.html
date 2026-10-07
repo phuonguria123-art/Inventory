@@ -1,0 +1,19 @@
+<section class="form-page">
+  <header class="form-header">
+    <div><a routerLink="/product">← Quay lại danh sách</a><h2>{{ mode === 'create' ? 'Thêm sản phẩm' : mode === 'edit' ? 'Cập nhật sản phẩm' : 'Chi tiết sản phẩm' }}</h2><p>Thông tin định danh, giá và nhà cung cấp của sản phẩm.</p></div>
+    @if (mode === 'view') { <button type="button" class="secondary-button" (click)="enableEdit()">Chỉnh sửa</button> }
+  </header>
+
+  <form class="form-card" [formGroup]="productForm" (ngSubmit)="onSubmit()">
+    <div class="form-grid">
+      <label><span>Tên sản phẩm <b>*</b></span><input formControlName="name" placeholder="Nhập tên sản phẩm">@if (productForm.controls.name.touched && productForm.controls.name.invalid) { <small>Vui lòng nhập tên sản phẩm.</small> }</label>
+      <label><span>Mã sản phẩm <b>*</b></span><input formControlName="code" placeholder="Ví dụ: PRD-001">@if (productForm.controls.code.touched && productForm.controls.code.invalid) { <small>Vui lòng nhập mã sản phẩm.</small> }</label>
+      <label><span>Xuất xứ</span><input formControlName="origin" placeholder="Ví dụ: Việt Nam"></label>
+      <label><span>Nhà cung cấp</span><select formControlName="supplierId"><option value="">Không chọn nhà cung cấp</option>@for (supplier of suppliers(); track supplier.id) { <option [value]="supplier.id">{{ supplier.name }}</option> }</select></label>
+      <label><span>Khối lượng (kg)</span><input type="number" min="0" step="0.01" formControlName="weight"></label>
+      <label><span>Đơn giá <b>*</b></span><input type="number" min="0" formControlName="unitPrice">@if (productForm.controls.unitPrice.touched && productForm.controls.unitPrice.invalid) { <small>Đơn giá không được âm.</small> }</label>
+      <label class="full"><span>URL hình ảnh</span><input formControlName="imgUrl" placeholder="https://..."></label>
+    </div>
+    @if (mode !== 'view') { <footer class="form-actions"><a routerLink="/product">Hủy</a><button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Đang lưu...' : mode === 'create' ? 'Tạo sản phẩm' : 'Lưu thay đổi' }}</button></footer> }
+  </form>
+</section>

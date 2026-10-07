@@ -1,0 +1,27 @@
+<section class="page">
+  <header class="page-header">
+    <div><span>Danh mục</span><h2>Kho hàng</h2><p>Quản lý thông tin và dung tích các kho trong hệ thống.</p></div>
+    <a class="primary-button" routerLink="/warehouse/create">+ Thêm kho</a>
+  </header>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mã kho</th><th>Tên kho</th><th>Liên hệ</th><th>Địa chỉ</th><th>Dung tích</th><th>Loại kho</th><th class="actions">Thao tác</th></tr></thead>
+        <tbody>
+          @for (item of warehousesModel(); track item.id) {
+            <tr>
+              <td><span class="code">{{ item.code }}</span></td>
+              <td><strong>{{ item.name }}</strong></td>
+              <td>{{ item.phone }}</td><td>{{ item.address }}</td><td>{{ item.capacity }}</td>
+              <td><span class="badge" [class.badge--main]="item.isMain">{{ item.isMain ? 'Kho chính' : 'Kho phụ' }}</span></td>
+              <td class="actions"><a [routerLink]="['/warehouse/detail', item.id]">Xem</a><a [routerLink]="['/warehouse/edit', item.id]">Sửa</a><button type="button" (click)="onDelete(item.id)">Xóa</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="empty">Chưa có kho hàng nào.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

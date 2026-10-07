@@ -26,14 +26,14 @@ namespace Inventory.Api.Controllers
             return Ok(users);
         }
 
-        [Authorize(Policy = PermissionCodes.RoleRead)]
+        //  [Authorize(Policy = PermissionCodes.RoleRead)]
         [HttpGet("roles")]
         public async Task<IActionResult> GetRoleAll()
         {
             var listUser = await _userService.GetAllAsync();
             return Ok(listUser);
         }
-        [Authorize(Policy = PermissionCodes.RoleManage)]
+        //[Authorize(Policy = PermissionCodes.RoleManage)]
         [HttpPut("{userId:guid}/roles")]
 
         public async Task<IActionResult> UpdateUserRole(Guid userId, [FromBody] List<Guid> roleIds)

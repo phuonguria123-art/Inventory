@@ -3,6 +3,8 @@ using Inventory.Application.Warehouses.DTOs;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
+using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace Inventory.Application.Warehouses
@@ -101,6 +103,10 @@ namespace Inventory.Application.Warehouses
             }
             if (capacity <= 0) {
                 throw new ValidationException("Dung tích kho không hợp lệ");
+            }
+            if(!Regex.IsMatch(phone, @"^0[0-9]{9}$"))
+            {
+                throw new ValidationException("Định dạng số điện thoại không hợp lệ");
             }
         }
     }

@@ -1,0 +1,43 @@
+<header class="navbar">
+  <div class="navbar__heading">
+    <p>Inventory Management</p>
+    <h1>Tổng quan kho hàng</h1>
+  </div>
+
+  <div class="navbar__actions">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-4-4" />
+      </svg>
+      <input type="search" placeholder="Tìm kiếm sản phẩm, đơn hàng..." aria-label="Tìm kiếm" />
+      <kbd>⌘ K</kbd>
+    </label>
+
+    <button class="icon-button" type="button" aria-label="Xem thông báo">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" />
+      </svg>
+      <span class="notification-dot" aria-hidden="true"></span>
+    </button>
+
+    <span class="navbar__divider" aria-hidden="true"></span>
+
+    <button class="profile" type="button" aria-label="Mở menu tài khoản">
+      <span class="profile__avatar">NA</span>
+      <span class="profile__details">
+        <strong>Nguyễn An</strong>
+        <small>Quản trị viên</small>
+      </span>
+      <svg class="profile__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m8 10 4 4 4-4" />
+      </svg>
+      <span class="profile__menu" aria-hidden="true" style="background-color: violet;">
+        <button type="button">Tài khoản</button>
+        <button type="button" (click)="logout()">Đăng xuất</button>
+      </span>
+
+    </button>
+
+  </div>
+</header>
