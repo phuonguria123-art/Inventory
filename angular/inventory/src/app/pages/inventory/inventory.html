@@ -1,0 +1,55 @@
+<section class="page">
+  <header class="page-header">
+    <div><span>Kho hàng</span>
+      <h2>Tồn kho</h2>
+      <p>Theo dõi tồn thực tế, tồn giữ và số lượng khả dụng.</p>
+    </div>
+    <div class="header-actions"><a routerLink="/inventory/transactions">Lịch sử</a><a class="receive"
+        routerLink="/inventory/receive">+ Nhập kho</a>
+      <a routerLink="/inventory/issue">Xuất kho</a>
+      <a routerLink="/inventory/transfer">Chuyển kho</a>
+      <a routerLink="/inventory/adjust">Kiểm kê/ điều chỉnh tồn</a>
+      <a routerLink="/inventory/reserve">Giữ hàng</a>
+    </div>
+  </header>
+  <div class="card">
+    @if (isLoading()) { <div class="status">Đang tải dữ liệu...</div> }
+    @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Kho</th>
+            <th>Sản phẩm</th>
+            <th>Tồn thực tế</th>
+            <th>Đang giữ</th>
+            <th>Khả dụng</th>
+            <th>Min / Max</th>
+            <th>Cập nhật</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of inventories(); track item.id) { <tr>
+            <td><strong>{{ item.warehouseName }}</strong><small>{{ item.warehouseCode }}</small></td>
+            <td><strong>{{ item.productName }}</strong><small>{{ item.productCode }}</small></td>
+            <td>{{ item.quantityOnHand }}</td>
+            <td>{{ item.reservedQuantity }}</td>
+            <td><span class="quantity" [class.quantity--low]="item.availableQuantity <= item.minStock">{{
+                item.availableQuantity }}</span></td>
+            <td>{{ item.minStock }} / {{ item.maxStock }}</td>
+            <td>{{ item.lastUpdate }}</td>
+          </tr> }
+          @empty { <tr>
+            <td colspan="7" class="empty">Chưa có dữ liệu tồn kho.</td>
+          </tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="pagination"><span>{{ totalCount() }} bản ghi</span>
+      <div><button [disabled]="pageNumber() <= 1" (click)="changePage(pageNumber() - 1)">Trước</button><strong>{{
+          pageNumber() }} / {{ totalPages() || 1 }}</strong><button [disabled]="pageNumber() >= totalPages()"
+          (click)="changePage(pageNumber() + 1)">Sau</button></div>
+    </footer>
+    }
+  </div>
+</section>

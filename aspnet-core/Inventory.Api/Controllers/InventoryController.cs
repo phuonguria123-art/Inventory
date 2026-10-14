@@ -43,6 +43,14 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     {
         return Ok(await inventoryService.GetByWarehouseAndProductAsync(warehouseId, productId));
     }
+    //Lô hàng
+    [Authorize(Policy = PermissionCodes.InventoryRead)]
+    [HttpGet("warehouses/{warehouseId:guid}/products/{productId:guid}/lots")]
+    public async Task<ActionResult<List<InventoryItemDto>>> GetListLot(Guid warehouseId, Guid productId)
+    {
+        return Ok(await inventoryService.GetLotsById(warehouseId, productId));
+    }
+
     //hàng sắp hết
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("low-stock")]

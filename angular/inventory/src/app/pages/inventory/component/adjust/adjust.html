@@ -1,0 +1,24 @@
+<section class="operation-page">
+  <header><div><a routerLink="/inventory">← Quay lại tồn kho</a><h2>Kiểm kê kho</h2><p>Ghi nhận số lượng thực tế của từng lô và tự động tạo giao dịch điều chỉnh.</p></div><span class="operation-tag adjust">Phiếu kiểm kê</span></header>
+  <form [formGroup]="adjustForm" (ngSubmit)="submit()">
+    <div class="card info-grid">
+      <label><span>Kho kiểm kê <b>*</b></span><select formControlName="warehouseId" (change)="onWarehouseChange()"><option value="">Chọn kho</option>@for (warehouse of warehouses(); track warehouse.id) { <option [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }</select></label>
+      <label><span>Mã phiếu kiểm kê</span><input formControlName="reference" placeholder="Ví dụ: KK-2026-001"></label>
+      <label class="full"><span>Lý do / ghi chú <b>*</b></span><textarea rows="3" formControlName="notes" placeholder="Mô tả nguyên nhân kiểm kê và điều chỉnh"></textarea>@if (adjustForm.controls.notes.touched && adjustForm.controls.notes.invalid) { <small class="error">Vui lòng nhập lý do kiểm kê.</small> }</label>
+    </div>
+    <div class="items-header"><div><h3>Kết quả đếm thực tế</h3><p>Mỗi dòng tương ứng một lô hàng đang tồn tại trong kho.</p></div><button type="button" (click)="addProduct()">+ Thêm sản phẩm</button></div>
+    <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
+      <article class="card item" [formGroupName]="i"><div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger" (click)="removeProduct(i)">Xóa</button></div>
+        <label><span>Sản phẩm <b>*</b></span><select formControlName="productId" (change)="onProductChange(i)"><option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) { <option [value]="option.id">{{ option.code }} - {{ option.name }}</option> }</select></label>
+        <div formArrayName="lots" class="lots">@for (lot of getLots(i).controls; track lot; let j = $index) {
+          <div class="lot" [formGroupName]="j"><div class="lot-title"><strong>Lô {{ j + 1 }}</strong><button type="button" class="danger" (click)="removeLot(i,j)">Xóa lô</button></div>
+            <div class="lot-grid two"><label><span>Số lô <b>*</b></span><select formControlName="batchNumber"><option value="">Chọn lô đang có trong kho</option>@for (option of getLotOptions(i); track option.id) { <option [value]="option.batchNumber">{{ option.batchNumber }} — hệ thống {{ option.quantity }} — HSD {{ option.expiryDate || 'Không có' }}</option> }</select>@if (product.get('productId')?.value && getLotOptions(i).length === 0) { <small>Không có lô hàng trong kho này.</small> }</label>
+              <label><span>Số lượng thực tế <b>*</b></span><input type="number" min="0" formControlName="actualQuantity">@if (getSelectedLot(i,j); as selectedLot) { <small>Hệ thống đang ghi nhận: {{ selectedLot.quantity }}</small> }</label></div>
+            @if (getDifference(i,j); as difference) { <div class="difference" [class.increase]="difference > 0" [class.decrease]="difference < 0">Chênh lệch: {{ difference > 0 ? '+' : '' }}{{ difference }}</div> }
+          </div> }
+        </div><button type="button" class="add-lot" (click)="addLot(i)">+ Thêm lô</button>
+      </article> }
+    </div>
+    <footer><a routerLink="/inventory">Hủy</a><button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Đang xử lý...' : 'Xác nhận kết quả kiểm kê' }}</button></footer>
+  </form>
+</section>

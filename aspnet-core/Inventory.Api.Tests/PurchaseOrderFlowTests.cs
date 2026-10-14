@@ -42,14 +42,14 @@ public sealed class PurchaseOrderFlowTests : IClassFixture<InventoryApiFactory>
                 TotalWeight = 20m,
                 Products =
                 [
-                    new PurchaseOrderDetailDto
+                    new PurchaseOrderDetailCreateDto
                     {
                         ProductId = data.FirstProductId,
                         OrderedQuantity = 2,
                         UnitPrice = 10m,
                         Note = "Dòng sẽ được sửa"
                     },
-                    new PurchaseOrderDetailDto
+                    new PurchaseOrderDetailCreateDto
                     {
                         ProductId = data.SecondProductId,
                         OrderedQuantity = 1,
@@ -148,13 +148,13 @@ public sealed class PurchaseOrderFlowTests : IClassFixture<InventoryApiFactory>
             Freight = 5m,
             Products =
             [
-                new PurchaseOrderDetailDto
+                new PurchaseOrderDetailCreateDto
                 {
                     ProductId = data.FirstProductId,
                     OrderedQuantity = 5,
                     UnitPrice = 10m
                 },
-                new PurchaseOrderDetailDto
+                new PurchaseOrderDetailCreateDto
                 {
                     ProductId = data.SecondProductId,
                     OrderedQuantity = 3,

@@ -22,6 +22,7 @@ namespace Inventory.Domain.Interfaces
             string? productSearch,
             string? sortBy,
             bool sortDescending);
+        Task<List<InventoryItem>> GetListItemAsync(Guid warehouseId,Guid productId);
         Task<(List<InventoryTransaction> Items, int TotalCount)> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
         Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync();
         Task<bool> TransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType transactionType, string reference);

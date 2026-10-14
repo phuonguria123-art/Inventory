@@ -20,6 +20,7 @@
     "@angular/platform-server": "^22.1.0",
     "@angular/router": "^22.1.0",
     "@angular/ssr": "^22.1.4",
+    "@ng-select/ng-select": "^24.2.1",
     "@openng/ngx-toastr": "^1.1.1",
     "express": "^5.1.0",
     "jquery": "^4.0.0",

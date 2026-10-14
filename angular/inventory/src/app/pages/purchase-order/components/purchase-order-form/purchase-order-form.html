@@ -1,0 +1,77 @@
+<section class="operation-page">
+    <header>
+        <div><a routerLink="/purchase-orders">← Danh sách đơn mua hàng</a>
+            <h2>{{ pageTitle() }}</h2>
+            <p>Tạo và quản lý nội dung đơn đặt hàng gửi tới nhà cung cấp.</p>
+        </div>
+        <div class="header-side">
+            @if (currentOrder(); as order)
+            { <span class="order-code">{{ order.code }}</span>
+            @if (mode === 'view') {
+              @switch (order.status) {
+                @case (PurchaseOrderStatus.Draft) { <button type="button" (click)="updateStatus(PurchaseOrderStatus.Sent)">Gửi đơn</button> }
+                @case (PurchaseOrderStatus.Sent) { <button type="button" (click)="updateStatus(PurchaseOrderStatus.Confirmed)">Xác nhận từ NCC</button> }
+                @case (PurchaseOrderStatus.Confirmed) { <button type="button" (click)="updateStatus(PurchaseOrderStatus.Shipping)">Chuyển sang đang giao</button> }
+                @case (PurchaseOrderStatus.Shipping) { <a [routerLink]="['/purchase-orders/receive', order.id]">Nhận hàng</a> }
+              }
+              @if (canCancel()) { <button type="button" class="cancel-order" (click)="cancelOrder()">Hủy đơn</button> }
+            }
+            }
+            @if(mode === 'view' && canEdit())
+            { <button type="button" (click)="enableEdit()">Cập nhật đơn</button> }
+
+        </div>
+    </header>
+    @if (isLoading()) { <div class="loading">Đang tải thông tin đơn mua hàng...</div> }
+    @else { <form [formGroup]="orderForm" (ngSubmit)="submit()">
+        <div class="card info-grid">
+            <label><span>Nhà cung cấp <b>*</b></span><select formControlName="supplierId">
+                    <option value="">Chọn nhà cung cấp</option>@for (supplier of suppliers(); track supplier.id) {
+                    <option [value]="supplier.id">{{ supplier.code }} - {{ supplier.name }}</option> }
+                </select></label>
+            <label><span>Kho nhận <b>*</b></span><select formControlName="receivingWarehouseId">
+                    <option value="">Chọn kho nhận</option>@for (warehouse of warehouses(); track warehouse.id) {
+                    <option [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }
+                </select></label>
+            <label><span>Ngày dự kiến nhận <b>*</b></span><input type="date"
+                    formControlName="expectedReceiveDate"></label>
+            <label><span>Loại đơn</span><input formControlName="type" placeholder="Ví dụ: Nhập thường"></label>
+            <label><span>Phí vận chuyển</span><input type="number" min="0" formControlName="freight"></label>
+            <label><span>Tổng khối lượng</span><input type="number" min="0" formControlName="totalWeight"></label>
+        </div>
+        <div class="items-header">
+            <div>
+                <h3>Danh sách sản phẩm</h3>
+                <p>Đơn giá và số lượng được dùng để tính tổng giá trị đơn.</p>
+            </div>@if (mode !== 'view') { <button type="button" (click)="addProduct()">+ Thêm sản phẩm</button> }
+        </div>
+        <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
+            <article class="card item" [formGroupName]="i">
+                <div class="item-title"><strong>Dòng sản phẩm {{ i + 1 }}</strong>@if (mode !== 'view') { <button
+                        type="button" class="danger" (click)="removeProduct(i)">Xóa</button> }</div>
+                <div class="product-grid"><label class="product-select"><span>Sản phẩm <b>*</b></span><select
+                            formControlName="productId">
+                            <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) {
+                            <option [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
+                        </select></label>
+                    <label><span>Số lượng <b>*</b></span><input formControlName="orderedQuantity" type="number"
+                            min="1"></label><label><span>Đơn giá <b>*</b></span><input formControlName="unitPrice"
+                            type="number" min="0"></label><label><span>Thành tiền</span><output>{{
+                            getLineTotal(i).toLocaleString('vi-VN') }} ₫</output></label>
+                    <label><span>Loại</span><input formControlName="type"></label><label class="note"><span>Ghi
+                            chú</span><textarea rows="2" formControlName="note"></textarea></label>
+                </div>
+            </article> }
+        </div>
+        <section class="summary">
+            <div><span>Tạm tính</span><strong>{{ getSubTotal().toLocaleString('vi-VN') }} ₫</strong></div>
+            <div><span>Phí vận chuyển</span><strong>{{ (orderForm.controls.freight.value || 0).toLocaleString('vi-VN')
+                    }} ₫</strong></div>
+            <div class="grand"><span>Tổng cộng</span><strong>{{ getGrandTotal().toLocaleString('vi-VN') }} ₫</strong>
+            </div>
+        </section>
+        <footer><a routerLink="/purchase-orders">{{ mode === 'view' ? 'Quay lại' : 'Hủy thao tác' }}</a>@if (mode !==
+            'view') { <button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Đang xử lý...' : (mode ===
+                'edit' ? 'Lưu thay đổi' : 'Tạo đơn nháp') }}</button> }</footer>
+    </form> }
+</section>

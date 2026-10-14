@@ -65,6 +65,15 @@ public sealed class InventoryService(
         };
     }
 
+    public async Task<List<InventoryItemDto>> GetLotsById(Guid warehouseId, Guid productId)
+    {
+        if (!await warehouseRepository.ExistsByIdAsync(warehouseId))
+            throw new NotFoundException("Kho không tồn tại.");
+        if (!await productRepository.ExistByIdAsync(productId))
+            throw new NotFoundException("Sản phẩm không tồn tại.");
+        return mapper.Map<List<InventoryItemDto>>(await inventoryRepository.GetListItemAsync(warehouseId, productId)) ;
+    }
+
     public async Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
     {
         ValidatePagination(pageSize, pageNumber);
@@ -273,7 +282,6 @@ public sealed class InventoryService(
         if (duplicateProduct is not null)
             throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu chuyển kho.");
     }
-    //giữ hàng/hủy giữ hàng
     private static void ValidateReservationRequest(ReserveInventoryRequestDto request, Guid userId)
     {
         if (request.WarehouseId == Guid.Empty)
@@ -296,6 +304,7 @@ public sealed class InventoryService(
             throw new ValidationException("Thời hạn giữ hàng phải lớn hơn thời điểm hiện tại.");
 
     }
+//giữ hàng/hủy hàng
     public async Task<List<InventoryDto>> ReserveAsync(ReserveInventoryRequestDto request, Guid userId)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -558,63 +567,6 @@ public sealed class InventoryService(
             }
         }
     }
-    private async Task ValidateIssueRequest(IssueInventoryRequestDto request,
-            Guid userId)
-    {
-        if (request.WarehouseId == Guid.Empty)
-            throw new ValidationException("Kho xuất là bắt buộc.");
-        if (userId == Guid.Empty)
-            throw new ValidationException("Người thực hiện là bắt buộc.");
-        if (request.Products is null || request.Products.Count == 0)
-            throw new ValidationException("Phiếu xuất phải có ít nhất một sản phẩm.");
-        if (request.Reference?.Trim().Length > 100)
-            throw new ValidationException("Mã tham chiếu không được vượt quá 100 ký tự.");
-        if (request.Notes?.Trim().Length > 500)
-            throw new ValidationException("Ghi chú không được vượt quá 500 ký tự.");
-        var duplicateProduct = request.Products
-                 .GroupBy(product => product.ProductId)
-                 .FirstOrDefault(group => group.Count() > 1);
-        if (duplicateProduct is not null)
-            throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu xuất.");
-
-        foreach (var product in request.Products)
-        {
-
-            if (product.ProductId == Guid.Empty)
-                throw new ValidationException("Sản phẩm trong phiếu xuất không hợp lệ.");
-            if (product.Lots is null || product.Lots.Count == 0)
-                throw new ValidationException("Mỗi sản phẩm phải có ít nhất một lô.");
-            await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
-            var duplicateLot = product.Lots
-              .Where(lot => !string.IsNullOrWhiteSpace(lot.BatchNumber))
-                 .GroupBy(lot => lot.BatchNumber.Trim(), StringComparer.OrdinalIgnoreCase)
-                 .FirstOrDefault(group => group.Count() > 1);
-            if (duplicateLot is not null)
-                throw new ValidationException("Mỗi lô chỉ được xuất hiện một lần trong 1 sản phẩm.");
-
-            foreach (var lot in product.Lots)
-            {
-                if (string.IsNullOrWhiteSpace(lot.BatchNumber))
-                    throw new ValidationException("Mã lô là bắt buộc.");
-                if (lot.BatchNumber.Trim().Length > 100)
-                    throw new ValidationException("Mã lô không được vượt quá 100 ký tự.");
-                if (lot.Quantity <= 0)
-                    throw new ValidationException("Số lượng của lô phải lớn hơn 0.");
-            }
-        }
-    }
-    private async Task ValidateTransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType type, string? reference)
-    {
-        if (!string.IsNullOrWhiteSpace(reference))
-        {
-            var isExists = await inventoryRepository.TransactionReferenceExistsAsync(warehouseId, type, reference);
-            if (isExists)
-            {
-                throw new ConflictException("Yêu cầu đã được thực hiện trước đó");
-            }
-        }
-
-    }
     //xuất kho
     public async Task<List<InventoryDto>> IssueAsync(
         IssueInventoryRequestDto request,
@@ -767,7 +719,7 @@ public sealed class InventoryService(
                     totalDifference += quantityDifference;
                 }
                 var newQuantityOnHand = inventory.QuantityOnHand + totalDifference;
-                if(newQuantityOnHand < inventory.ReservedQuantity)
+                if (newQuantityOnHand < inventory.ReservedQuantity)
                 {
                     throw new ConflictException("Số lượng kiểm kê không được nhỏ hơn số lượng đang giữ");
                 }
@@ -780,6 +732,73 @@ public sealed class InventoryService(
         return updatedInventories.Select(MapToDto).ToList();
     }
 
+    public async Task<List<InventoryDto>> GetLowStockAsync()
+    {
+        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetLowStockAsync());
+    }
+
+    public async Task<List<InventoryDto>> GetExcessStockAsync()
+    {
+        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetExcessStockAsync());
+    }
+    private async Task ValidateIssueRequest(IssueInventoryRequestDto request,
+            Guid userId)
+    {
+        if (request.WarehouseId == Guid.Empty)
+            throw new ValidationException("Kho xuất là bắt buộc.");
+        if (userId == Guid.Empty)
+            throw new ValidationException("Người thực hiện là bắt buộc.");
+        if (request.Products is null || request.Products.Count == 0)
+            throw new ValidationException("Phiếu xuất phải có ít nhất một sản phẩm.");
+        if (request.Reference?.Trim().Length > 100)
+            throw new ValidationException("Mã tham chiếu không được vượt quá 100 ký tự.");
+        if (request.Notes?.Trim().Length > 500)
+            throw new ValidationException("Ghi chú không được vượt quá 500 ký tự.");
+        var duplicateProduct = request.Products
+                 .GroupBy(product => product.ProductId)
+                 .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateProduct is not null)
+            throw new ValidationException("Mỗi sản phẩm chỉ được xuất hiện một lần trong phiếu xuất.");
+
+        foreach (var product in request.Products)
+        {
+
+            if (product.ProductId == Guid.Empty)
+                throw new ValidationException("Sản phẩm trong phiếu xuất không hợp lệ.");
+            if (product.Lots is null || product.Lots.Count == 0)
+                throw new ValidationException("Mỗi sản phẩm phải có ít nhất một lô.");
+            await EnsureProductAndWarehouseExistAsync(product.ProductId, request.WarehouseId);
+            var duplicateLot = product.Lots
+              .Where(lot => !string.IsNullOrWhiteSpace(lot.BatchNumber))
+                 .GroupBy(lot => lot.BatchNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+                 .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateLot is not null)
+                throw new ValidationException("Mỗi lô chỉ được xuất hiện một lần trong 1 sản phẩm.");
+
+            foreach (var lot in product.Lots)
+            {
+                if (string.IsNullOrWhiteSpace(lot.BatchNumber))
+                    throw new ValidationException("Mã lô là bắt buộc.");
+                if (lot.BatchNumber.Trim().Length > 100)
+                    throw new ValidationException("Mã lô không được vượt quá 100 ký tự.");
+                if (lot.Quantity <= 0)
+                    throw new ValidationException("Số lượng của lô phải lớn hơn 0.");
+            }
+        }
+    }
+    private async Task ValidateTransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType type, string? reference)
+    {
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            var isExists = await inventoryRepository.TransactionReferenceExistsAsync(warehouseId, type, reference);
+            if (isExists)
+            {
+                throw new ConflictException("Yêu cầu đã được thực hiện trước đó");
+            }
+        }
+
+    }
+   
     private async Task EnsureProductAndWarehouseExistAsync(Guid productId, Guid warehouseId)
     {
         if (!await productRepository.ExistByIdAsync(productId))
@@ -864,14 +883,4 @@ public sealed class InventoryService(
         AvailableQuantity = inventory.AvailableQuantity,
         LastUpdatedAt = inventory.LastUpdatedAt
     };
-
-    public async Task<List<InventoryDto>> GetLowStockAsync()
-    {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetLowStockAsync());
-    }
-
-    public async Task<List<InventoryDto>> GetExcessStockAsync()
-    {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetExcessStockAsync());
-    }
 }

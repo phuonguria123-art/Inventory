@@ -1,0 +1,68 @@
+<section class="page">
+    <header class="page-header">
+        <div><span>Đơn mua hàng</span>
+            <h2>Purchase Order</h2>
+            <p>Theo dõi đơn đặt nhà cung cấp và kho dự kiến nhận hàng.</p>
+        </div><a class="primary" routerLink="/purchase-orders/create">+ Tạo đơn mua hàng</a>
+    </header>
+    <form class="filters" (ngSubmit)="applyFilters()">
+        <label><span>Trạng thái</span><select name="status" [(ngModel)]="status">
+                <option value="">Tất cả trạng thái</option>@for (item of statuses; track item.value) { <option
+                    [value]="item.value">{{ item.label }}</option> }
+            </select></label>
+        <label><span>Nhà cung cấp</span><select name="supplierId" [(ngModel)]="supplierId">
+                <option value="">Tất cả nhà cung cấp</option>@for (item of suppliers(); track item.id) { <option
+                    [value]="item.id">{{ item.code }} - {{ item.name }}</option> }
+            </select></label>
+        <label><span>Kho nhận</span><select name="warehouseId" [(ngModel)]="warehouseId">
+                <option value="">Tất cả kho</option>@for (item of warehouses(); track item.id) { <option
+                    [value]="item.id">{{ item.code }} - {{ item.name }}</option> }
+            </select></label>
+        <label><span>Ngày tạo</span><input type="date" name="createDate" [(ngModel)]="createDate"></label>
+        <div class="filter-actions"><button type="button" (click)="clearFilters()">Đặt lại</button><button
+                class="primary" type="submit">Lọc</button></div>
+    </form>
+    <div class="card">
+        @if (isLoading()) { <div class="status">Đang tải dữ liệu...</div> }
+        @else { <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Nhà cung cấp</th>
+                        <th>Kho nhận</th>
+                        <th>Ngày tạo / dự kiến</th>
+                        <th>Trạng thái</th>
+                        <th>Tổng tiền</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (item of purchaseOrders(); track item.id) { <tr>
+                        <td><strong>{{ item.code }}</strong><small>{{ item.orderDetailDto.length }} sản phẩm</small>
+                        </td>
+                        <td>{{ getSupplierName(item.supplierId) }}</td>
+                        <td>{{ getWarehouseName(item.receivingWarehouseId) }}</td>
+                        <td><strong>{{ item.createDate | date:'dd/MM/yyyy' }}</strong><small>Dự kiến: {{
+                                item.expectedReceiveDate | date:'dd/MM/yyyy' }}</small></td>
+                        <td><span class="status-badge status-{{ item.status }}">{{ getStatusLabel(item.status) }}</span>
+                        </td>
+                        <td><strong>{{ (item.totalPrice || 0) | currency:'VND':'symbol':'1.0-0' }}</strong></td>
+                        <td>
+                            <div class="row-actions"><a [routerLink]="['/purchase-orders/detail', item.id]">Xem</a>@if
+                                (item.status === 0) { <a class="edit"
+                                    [routerLink]="['/purchase-orders/edit', item.id]">Cập nhật</a> }</div>
+                        </td>
+                    </tr> } @empty { <tr>
+                        <td colspan="7" class="empty">Chưa có đơn mua hàng phù hợp.</td>
+                    </tr> }
+                </tbody>
+            </table>
+        </div>
+        <footer class="pagination"><span>{{ totalCount() }} bản ghi</span>
+            <div><button [disabled]="pageNumber() <= 1" (click)="changePage(pageNumber() - 1)">Trước</button><strong>{{
+                    pageNumber() }} / {{ totalPages() || 1 }}</strong><button [disabled]="pageNumber() >= totalPages()"
+                    (click)="changePage(pageNumber() + 1)">Sau</button></div>
+        </footer> }
+    </div>
+</section>

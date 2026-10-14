@@ -24,6 +24,6 @@ namespace Inventory.Application.PurchaseOrders.Dto
         /// tổng cuối(sau khi đã cộng các phí phụ)
         /// </summary>
         public decimal? TotalWeight { get; set; }
-        public List<PurchaseOrderDetailDto> Products { get; set; } = new();
+        public List<PurchaseOrderDetailCreateDto> Products { get; set; } = new();
     }
 }

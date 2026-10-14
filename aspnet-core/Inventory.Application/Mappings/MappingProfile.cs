@@ -53,6 +53,7 @@ namespace Inventory.Application.Mappings
                 .ForMember(destination => destination.ProductName,
                     options => options.MapFrom(source => source.Product.Name));
             CreateMap<InventoryTransaction, InventoryTransactionDto>();
+            CreateMap<InventoryItem, InventoryItemDto>();
             CreateMap<PurchaseOrder, PurchaseOrderDto>().ReverseMap();
             CreateMap<PurchaseOrderDetail, PurchaseOrderDetailDto>().ReverseMap();
             //  CreateMap<Product, ProductDto>()

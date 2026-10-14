@@ -1,0 +1,49 @@
+<section class="operation-page">
+    <header>
+        <div><a routerLink="/inventory">← Quay lại tồn kho</a>
+            <h2>Nhập kho</h2>
+            <p>Ghi nhận sản phẩm và từng lô hàng được nhập vào kho.</p>
+        </div><span class="operation-tag receive">Phiếu nhập</span>
+    </header>
+    <form [formGroup]="receiveForm" (ngSubmit)="submit()">
+        <div class="card info-grid"><label><span>Kho nhận <b>*</b></span><select formControlName="warehouseId">
+                    <option value="">Chọn kho nhận</option>@for (warehouse of warehouses(); track warehouse.id) {
+                    <option [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }
+                </select></label><label><span>Purchase Order ID</span><input formControlName="purchaseOrderId"
+                    placeholder="Để trống nếu nhập trực tiếp"></label><label><span>Mã tham chiếu</span><input
+                    formControlName="reference" placeholder="Ví dụ: RECEIPT-001"></label><label class="full"><span>Ghi
+                    chú</span><textarea rows="3" formControlName="notes"></textarea></label></div>
+        <div class="items-header">
+            <div>
+                <h3>Danh sách sản phẩm</h3>
+                <p>Mỗi sản phẩm phải có ít nhất một lô.</p>
+            </div><button type="button" (click)="addProduct()">+ Thêm sản phẩm</button>
+        </div>
+        <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
+            <article class="card item" [formGroupName]="i">
+                <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger"
+                        (click)="removeProduct(i)">Xóa</button></div><label><span>Sản phẩm <b>*</b></span><select
+                        formControlName="productId">
+                        <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) {
+                        <option [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
+                    </select></label>
+                <div formArrayName="lots" class="lots">@for (lot of getLots(i).controls; track lot; let j = $index) {
+                    <div class="lot" [formGroupName]="j">
+                        <div class="lot-title"><strong>Lô {{ j + 1 }}</strong><button type="button" class="danger"
+                                (click)="removeLot(i,j)">Xóa lô</button></div>
+                        <div class="lot-grid"><label><span>Số lô *</span><input
+                                    formControlName="batchNumber"></label><label><span>Số lượng *</span><input
+                                    type="number" min="1" formControlName="quantity"></label><label><span>Giá vốn
+                                    *</span><input type="number" min="0"
+                                    formControlName="unitCost"></label><label><span>Vị trí</span><input
+                                    formControlName="location"></label><label><span>Ngày sản xuất</span><input
+                                    type="date" formControlName="manufactureDate"></label><label><span>Hạn sử
+                                    dụng</span><input type="date" formControlName="expiryDate"></label></div>
+                    </div> }
+                </div><button type="button" class="add-lot" (click)="addLot(i)">+ Thêm lô</button>
+            </article> }
+        </div>
+        <footer><a routerLink="/inventory">Hủy</a><button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ?
+                'Đang xử lý...' : 'Xác nhận nhập kho' }}</button></footer>
+    </form>
+</section>

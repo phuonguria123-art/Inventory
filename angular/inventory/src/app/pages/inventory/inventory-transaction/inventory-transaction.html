@@ -1,0 +1,18 @@
+<section class="page">
+  <header class="page-header"><div><a routerLink="/inventory">← Quay lại tồn kho</a><h2>Lịch sử giao dịch kho</h2><p>Tra cứu toàn bộ biến động nhập, xuất, chuyển và điều chỉnh tồn.</p></div><span>{{ totalCount() }} giao dịch</span></header>
+  <form class="filters" (ngSubmit)="applyFilters()">
+    <label><span>Kho</span><select name="warehouseId" [(ngModel)]="warehouseId"><option value="">Tất cả kho</option>@for (warehouse of warehouses(); track warehouse.id) { <option [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }</select></label>
+    <label><span>Sản phẩm</span><select name="productId" [(ngModel)]="productId"><option value="">Tất cả sản phẩm</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.code }} - {{ product.name }}</option> }</select></label>
+    <label><span>Loại giao dịch</span><select name="transactionType" [(ngModel)]="transactionType"><option value="">Tất cả loại</option>@for (type of transactionTypes; track type.value) { <option [value]="type.value">{{ type.label }}</option> }</select></label>
+    <label><span>Mã tham chiếu</span><input name="reference" [(ngModel)]="reference" placeholder="PO, SO, phiếu kiểm kê..."></label>
+    <div class="filter-actions"><button type="button" (click)="clearFilters()">Đặt lại</button><button class="primary" type="submit">Tìm kiếm</button></div>
+  </form>
+  <div class="card">
+    @if (isLoading()) { <div class="status">Đang tải dữ liệu...</div> }
+    @else { <div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Kho</th><th>Sản phẩm</th><th>Loại</th><th>Số lượng</th><th>Tham chiếu</th><th>Ghi chú</th></tr></thead><tbody>
+      @for (item of inventoryTransactions(); track item.id) { <tr><td>{{ item.transactionDate | date:'dd/MM/yyyy HH:mm' }}</td><td>{{ getWarehouseName(item.warehouseId) }}</td><td>{{ getProductName(item.productId) }}</td><td><span class="type" [ngClass]="getTypeClass(item.transactionType)">{{ getTypeLabel(item.transactionType) }}</span></td><td><strong>{{ item.quantity > 0 ? '+' : '' }}{{ item.quantity }}</strong></td><td><code>{{ item.reference || '—' }}</code></td><td>{{ item.notes || '—' }}</td></tr> }
+      @empty { <tr><td colspan="7" class="empty">Không có giao dịch phù hợp với bộ lọc.</td></tr> }
+    </tbody></table></div>
+    <footer class="pagination"><span>{{ totalCount() }} bản ghi</span><div><button [disabled]="pageNumber() <= 1" (click)="changePage(pageNumber() - 1)">Trước</button><strong>{{ pageNumber() }} / {{ totalPages() || 1 }}</strong><button [disabled]="pageNumber() >= totalPages()" (click)="changePage(pageNumber() + 1)">Sau</button></div></footer> }
+  </div>
+</section>

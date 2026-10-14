@@ -8,7 +8,7 @@ namespace Inventory.Application.PurchaseOrders.Dto.Receive
 {
     public sealed class ReceivePurchaseOrderProductDto
     {
-        public Guid PurchaseOrderDetailId { get; set; }
+        public Guid PurchaseOrderDetailId { get; set; }    
         public List<ReceivePurchaseOrderLotDto> Lots { get; set; } = [];
     }
 }

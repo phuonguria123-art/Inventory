@@ -1,0 +1,20 @@
+<section class="operation-page">
+  <header><div><a [routerLink]="purchaseOrderId ? ['/purchase-orders/detail', purchaseOrderId] : ['/purchase-orders']">← Quay lại đơn mua hàng</a><h2>Nhận đơn mua hàng</h2><p>Kiểm đếm hàng thực nhận và khai báo từng lô trước khi nhập kho.</p></div>@if (currentOrder(); as order) { <span class="operation-tag receive">{{ order.code }}</span> }</header>
+  @if (isLoading()) { <div class="loading">Đang tải thông tin đơn mua hàng...</div> }
+  @else { <form [formGroup]="receiveForm" (ngSubmit)="submit()">
+    @if (currentOrder(); as order) { <section class="order-summary"><div><span>Kho nhận</span><strong>{{ order.receivingWarehouseId }}</strong></div><div><span>Ngày dự kiến</span><strong>{{ order.expectedReceiveDate }}</strong></div><div><span>Số sản phẩm</span><strong>{{ order.orderDetailDto.length }}</strong></div></section> }
+    <div class="notice">Luồng hiện tại nhận toàn bộ đơn trong một lần. Mỗi sản phẩm phải có ít nhất một lô và tổng số lượng các lô phải bằng số lượng đã đặt.</div>
+    <div class="items-header"><div><h3>Kiểm đếm sản phẩm và lô hàng</h3><p>Danh sách sản phẩm được lấy trực tiếp từ đơn mua hàng.</p></div></div>
+    <div formArrayName="orderDetails" class="items">@for (product of orderDetails.controls; track product; let i = $index) {
+      <article class="card item" [formGroupName]="i">
+        <div class="product-heading"><div><span>Sản phẩm {{ i + 1 }}</span><strong>{{ getProductName(product.get('productId')?.value) }}</strong></div><div class="quantity-summary"><span>Đặt: <b>{{ product.get('orderedQuantity')?.value }}</b></span><span>Đã khai báo: <b>{{ getReceivedQuantity(i) }}</b></span><span class="difference" [class.valid]="getDifference(i) === 0" [class.invalid]="getDifference(i) !== 0">Chênh lệch: {{ getDifference(i) > 0 ? '+' : '' }}{{ getDifference(i) }}</span></div></div>
+        <div formArrayName="lots" class="lots">@for (lot of getLots(i).controls; track lot; let j = $index) {
+          <div class="lot" [formGroupName]="j"><div class="lot-title"><strong>Lô {{ j + 1 }}</strong>@if (getLots(i).length > 1) { <button type="button" class="danger" (click)="removeLot(i,j)">Xóa lô</button> }</div>
+            <div class="lot-grid"><label><span>Mã lô <b>*</b></span><input formControlName="batchNumber" placeholder="Ví dụ: LOT-2026-001"></label><label><span>Số lượng nhận <b>*</b></span><input type="number" min="1" formControlName="receivedQuantity"></label><label><span>Giá vốn <b>*</b></span><input type="number" min="0" formControlName="unitCost"></label><label><span>Vị trí lưu</span><input formControlName="location" placeholder="Kệ A-01"></label><label><span>Ngày sản xuất</span><input type="date" formControlName="manufactureDate"></label><label><span>Hạn sử dụng</span><input type="date" formControlName="expiryDate"></label></div>
+          </div> }
+        </div><button type="button" class="add-lot" (click)="addLot(i)">+ Thêm lô cho sản phẩm</button>
+      </article> }
+    </div>
+    <footer><a [routerLink]="purchaseOrderId ? ['/purchase-orders/detail', purchaseOrderId] : ['/purchase-orders']">Hủy</a><button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Đang nhập kho...' : 'Xác nhận nhận toàn bộ đơn' }}</button></footer>
+  </form> }
+</section>

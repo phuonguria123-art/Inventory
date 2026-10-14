@@ -1,0 +1,49 @@
+<section class="operation-page">
+  <header>
+    <div><a routerLink="/inventory">← Quay lại tồn kho</a>
+      <h2>{{ reserveForm.controls.isCancel.value ? 'Hủy giữ hàng' : 'Giữ hàng' }}</h2>
+      <p>Giữ số lượng khả dụng cho một yêu cầu hoặc giải phóng lượt giữ đang hoạt động.</p>
+    </div><span class="operation-tag reserve">Phiếu giữ hàng</span>
+  </header>
+  <form [formGroup]="reserveForm" (ngSubmit)="submit()">
+    <div class="mode-switch"><label><input type="radio" formControlName="isCancel" [value]="false"><span><strong>Giữ
+            hàng</strong><small>Trừ số lượng khả dụng để dành cho yêu cầu</small></span></label><label><input
+          type="radio" formControlName="isCancel" [value]="true"><span><strong>Hủy giữ</strong><small>Giải phóng một
+            lượt giữ đang hoạt động</small></span></label></div>
+    <div class="card info-grid">
+      <label><span>Kho <b>*</b></span><select formControlName="warehouseId">
+          <option value="">Chọn kho</option>@for (warehouse of warehouses(); track warehouse.id) { <option
+            [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }
+        </select></label>
+      <label><span>Mã tham chiếu <b>*</b></span><input formControlName="reference"
+          placeholder="Ví dụ: SO-2026-001"><small>Dùng đúng mã đã giữ khi thực hiện hủy giữ.</small></label>
+      @if (!reserveForm.controls.isCancel.value) { <label class="full"><span>Thời gian hết hạn</span><input
+          formControlName="expiresAt" type="datetime-local" [min]="minExpiry"><small>Để hệ thống tự giải phóng hàng nếu
+          yêu cầu không được xử lý đúng hạn.</small></label> }
+    </div>
+    <div class="notice" [class.cancel]="reserveForm.controls.isCancel.value">@if (reserveForm.controls.isCancel.value) {
+      Số lượng hủy phải bằng đúng số lượng của lượt giữ đang hoạt động có cùng kho, sản phẩm và mã tham chiếu. } @else {
+      Hệ thống chỉ cho giữ khi số lượng khả dụng còn đủ. Một mã tham chiếu không thể giữ cùng sản phẩm hai lần. }</div>
+    <div class="items-header">
+      <div>
+        <h3>Danh sách sản phẩm</h3>
+        <p>Nhập số lượng cần giữ hoặc cần giải phóng.</p>
+      </div><button type="button" (click)="addProduct()">+ Thêm sản phẩm</button>
+    </div>
+    <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
+      <article class="card item" [formGroupName]="i">
+        <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger"
+            (click)="removeProduct(i)">Xóa</button></div>
+        <div class="product-grid"><label><span>Sản phẩm <b>*</b></span><select formControlName="productId">
+              <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) { <option
+                [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
+            </select></label><label><span>Số lượng <b>*</b></span><input formControlName="quantity" type="number"
+              min="1"></label></div>
+      </article> }
+    </div>
+    <footer><a routerLink="/inventory">Hủy thao tác</a><button type="submit"
+        [class.cancel-button]="reserveForm.controls.isCancel.value" [disabled]="isSubmitting()">{{ isSubmitting() ?
+        'Đang xử lý...' : (reserveForm.controls.isCancel.value ? 'Xác nhận hủy giữ' : 'Xác nhận giữ hàng') }}</button>
+    </footer>
+  </form>
+</section>

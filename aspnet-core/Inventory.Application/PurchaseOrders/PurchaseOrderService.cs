@@ -264,7 +264,7 @@ namespace Inventory.Application.PurchaseOrders
             {
                 if (requestDetail.PurchaseOrderDetailId == Guid.Empty)
                     throw new ValidationException("Mã chi tiết đơn mua không hợp lệ.");
-
+               
                 if (!orderDetailsById.TryGetValue(requestDetail.PurchaseOrderDetailId, out var orderDetail))
                 {
                     throw new NotFoundException(
@@ -397,7 +397,7 @@ namespace Inventory.Application.PurchaseOrders
                 throw new ValidationException($"Sản phẩm {duplicateProduct.Key} xuất hiện nhiều lần trong đơn mua. Hãy gộp thành một dòng trước khi tạo đơn.");
             }
         }
-        private async Task ValidateCreatePurchaseOrderAsync(Guid SupplierId, DateTime ExpectedReceiveDate, Guid ReceivingWarehouseId, List<PurchaseOrderDetailDto> Products, decimal? freight, decimal? totalWeight)
+        private async Task ValidateCreatePurchaseOrderAsync(Guid SupplierId, DateTime ExpectedReceiveDate, Guid ReceivingWarehouseId, List<PurchaseOrderDetailCreateDto> Products, decimal? freight, decimal? totalWeight)
         {
             if (SupplierId == Guid.Empty)
                 throw new ValidationException("Mã nhà cung cấp không hợp lệ.");
@@ -465,7 +465,7 @@ namespace Inventory.Application.PurchaseOrders
                 Freight = createPurchase.Freight
             };
 
-            foreach (var x in createPurchase.Products ?? new List<PurchaseOrderDetailDto>())
+            foreach (var x in createPurchase.Products ?? new List<PurchaseOrderDetailCreateDto>())
             {
                 order.OrderDetails.Add(new PurchaseOrderDetail()
                 {

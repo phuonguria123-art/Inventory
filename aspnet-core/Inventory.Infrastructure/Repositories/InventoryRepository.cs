@@ -109,6 +109,11 @@ namespace Inventory.Infrastructure.Repositories
             return await _context.InventoryBalances.FirstOrDefaultAsync(x => x.Id == inventoryId);
         }
 
+        public async Task<List<InventoryItem>> GetListItemAsync( Guid warehouseId,
+       Guid productId)
+        {
+            return await _context.InventoryItems.Where(x => x.Inventory.ProductId == productId && x.Inventory.WarehouseId == warehouseId).OrderBy(x => x.ExpiryDate).ToListAsync();
+        }
         public async Task<InventoryBalance?> GetReadOnlyByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
         {
             return await _context.InventoryBalances

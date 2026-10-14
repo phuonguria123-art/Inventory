@@ -20,6 +20,7 @@ public interface IInventoryService
         string? productSearch,
         string? sortBy,
         bool sortDescending);
+    Task<List<InventoryItemDto>> GetLotsById(Guid warehouseId, Guid productId);
     Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
     Task<List<InventoryDto>> GetLowStockAsync();
     Task<List<InventoryDto>> GetExcessStockAsync();

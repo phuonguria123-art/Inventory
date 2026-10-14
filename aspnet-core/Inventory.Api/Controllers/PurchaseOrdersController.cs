@@ -45,7 +45,7 @@ namespace Inventory.Api.Controllers
 
         [Authorize(Policy = PermissionCodes.PurchaseOrderUpdate)]
         [HttpPut("{id:Guid}/status")]
-        public async Task<IActionResult> UpdateStatusAsync(Guid id, PurchaseOrderStatus status)
+        public async Task<IActionResult> UpdateStatusAsync(Guid id, [FromQuery] PurchaseOrderStatus status)
         {
             await _purchaseOrderService.UpdateStatusAsync(id, status);
             return NoContent();

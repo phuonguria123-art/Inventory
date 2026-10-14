@@ -1,0 +1,37 @@
+<section class="dashboard-page">
+  <header class="page-header">
+    <div><span class="eyebrow">Tổng quan kho hàng</span><h1>Dashboard</h1><p>Theo dõi mặt hàng cần xử lý và truy cập nhanh nghiệp vụ kho.</p></div>
+    <button type="button" (click)="loadStockWarnings()" [disabled]="isLoading()">{{ isLoading() ? 'Đang tải...' : 'Làm mới dữ liệu' }}</button>
+  </header>
+
+  <div class="summary-grid">
+    <article><span>Tổng cảnh báo</span><strong>{{ totalWarnings() }}</strong><small>Mặt hàng cần kiểm tra</small></article>
+    <article class="danger"><span>Sắp hết hàng</span><strong>{{ lowStockItems().length }}</strong><small>Thiếu {{ lowStockShortage() }} đơn vị so với mức tối thiểu</small></article>
+    <article class="warning"><span>Vượt mức tồn</span><strong>{{ excessStockItems().length }}</strong><small>Vượt {{ excessQuantity() }} đơn vị so với mức tối đa</small></article>
+  </div>
+
+  <section class="quick-actions">
+    <div><h2>Thao tác nhanh</h2><p>Thực hiện các nghiệp vụ kho thường dùng.</p></div>
+    <nav><a routerLink="/inventory/receive">Nhập kho</a><a routerLink="/inventory/issue">Xuất kho</a><a routerLink="/inventory/transfer">Chuyển kho</a><a class="primary" routerLink="/inventory/adjust">Kiểm kê kho</a></nav>
+  </section>
+
+  @if (isLoading()) { <div class="loading">Đang tải cảnh báo tồn kho...</div> }
+  @else {
+    <div class="warning-grid">
+      <article class="warning-card">
+        <header><h2><i class="red"></i>Sắp hết hàng</h2><a routerLink="/inventory">Xem tồn kho</a></header>
+        <div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Kho</th><th>Khả dụng</th><th>Tối thiểu</th></tr></thead><tbody>
+          @for (item of lowStockItems(); track item.id) { <tr><td><strong>{{ item.productName }}</strong><small>{{ item.productCode }}</small></td><td><strong>{{ item.warehouseName }}</strong><small>{{ item.warehouseCode }}</small></td><td><b class="badge red">{{ item.availableQuantity }}</b></td><td>{{ item.minStock }}</td></tr> }
+          @empty { <tr><td colspan="4" class="empty">Không có mặt hàng dưới mức tồn tối thiểu.</td></tr> }
+        </tbody></table></div>
+      </article>
+      <article class="warning-card">
+        <header><h2><i class="orange"></i>Vượt mức tồn</h2><a routerLink="/inventory">Xem tồn kho</a></header>
+        <div class="table-wrap"><table><thead><tr><th>Sản phẩm</th><th>Kho</th><th>Khả dụng</th><th>Tối đa</th></tr></thead><tbody>
+          @for (item of excessStockItems(); track item.id) { <tr><td><strong>{{ item.productName }}</strong><small>{{ item.productCode }}</small></td><td><strong>{{ item.warehouseName }}</strong><small>{{ item.warehouseCode }}</small></td><td><b class="badge orange">{{ item.availableQuantity }}</b></td><td>{{ item.maxStock }}</td></tr> }
+          @empty { <tr><td colspan="4" class="empty">Không có mặt hàng vượt mức tồn tối đa.</td></tr> }
+        </tbody></table></div>
+      </article>
+    </div>
+  }
+</section>
