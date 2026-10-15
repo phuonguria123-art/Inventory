@@ -1,8 +1,14 @@
-import { Component, inject } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { RegisterModel } from '../../core/models/account/register.model';
 import { NotificationService } from '../../core/services/notification.service';
 import { UserService } from '../../core/services/user.service';
+import { finalize } from 'rxjs';
+import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
+
+function passwordsMatch(control: AbstractControl): ValidationErrors | null {
+  return control.get('password')?.value === control.get('confirmPassword')?.value ? null : { passwordsMismatch: true };
+}
 
 
 @Component({
@@ -17,34 +23,28 @@ export class Register {
   private readonly notification = inject(NotificationService);
   private readonly userService = inject(UserService);
   registerModel: RegisterModel = new RegisterModel();
-  private registerForm = new FormGroup({
-    email: new FormControl<string>('', { nonNullable: true }),
-    userName: new FormControl<string>('', { nonNullable: true }),
-    password: new FormControl<string>('', { nonNullable: true }),
-    confirmPassword: new FormControl<string>('', { nonNullable: true }),
-  });
+  readonly isSubmitting = signal(false);
+  readonly registerForm = new FormGroup({
+    email: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(254)] }),
+    userName: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.minLength(3), Validators.maxLength(100), Validators.pattern(/.*\S.*/)] }),
+    password: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6), Validators.maxLength(100)] }),
+    confirmPassword: new FormControl<string>('', { nonNullable: true, validators: Validators.required }),
+  }, { validators: passwordsMatch });
   constructor(
 
   ) { }
   onSubmit() {
-    console.log(this.registerForm.value);
+    if (this.registerForm.invalid || this.isSubmitting()) { this.registerForm.markAllAsTouched(); return; }
     this.parseFormToModel();
-    this.userService.register(this.registerModel).subscribe({
-      next: (res) => {
-        this.notification.success(
-          "Thêm mới lịch sử công tác thành công",
-          "Thành công",
-        );
-        console.log(res);
-      },
-      error: (err) => {
-        console.error(err);
-      },
+    this.isSubmitting.set(true);
+    this.userService.register(this.registerModel).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: () => this.notification.success('Đăng ký tài khoản thành công'),
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể đăng ký tài khoản')),
     });
   }
   parseFormToModel() {
-    this.registerModel.email = this.registerForm.controls.email.value;
-    this.registerModel.userName = this.registerForm.controls.userName.value;
+    this.registerModel.email = this.registerForm.controls.email.value.trim();
+    this.registerModel.userName = this.registerForm.controls.userName.value.trim();
     this.registerModel.password = this.registerForm.controls.password.value;
   }
   closeLoginInfo() { }

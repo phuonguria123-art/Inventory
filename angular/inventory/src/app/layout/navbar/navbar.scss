@@ -46,7 +46,39 @@
 .navbar__actions {
   display: flex;
   align-items: center;
+  position: relative;
   gap: 12px;
+}
+
+.profile__menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 50;
+  min-width: 160px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 14%);
+
+  button {
+    width: 100%;
+    padding: 9px 11px;
+    color: #dc2626;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+
+    &:hover {
+      background: #fef2f2;
+    }
+  }
 }
 
 .search {

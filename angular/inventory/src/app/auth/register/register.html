@@ -20,6 +20,7 @@
                                         <label for="user">E-Mail</label>
                                         <input type="text" formControlName="email" title="Username" />
                                         <span id="valida" class="i i-warning"></span>
+                                        @if (registerForm.controls.email.touched && registerForm.controls.email.invalid) { <small class="field-error">Email không hợp lệ.</small> }
                                     </p>
                                 </div>
                                 <div class="col-12 col-md-6">
@@ -27,6 +28,7 @@
                                         <label for="pass">Name</label>
                                         <input type="text" formControlName="userName" title="Username" />
                                         <span id="valida" class="i i-close"></span>
+                                        @if (registerForm.controls.userName.touched && registerForm.controls.userName.invalid) { <small class="field-error">Tên đăng nhập cần từ 3 ký tự.</small> }
                                     </p>
                                 </div>
                                 <div class="col-12 col-md-6">
@@ -34,6 +36,7 @@
                                         <label for="pass">Password</label>
                                         <input type="password" formControlName="password" title="Password" />
                                         <span id="valida" class="i i-close"></span>
+                                        @if (registerForm.controls.password.touched && registerForm.controls.password.invalid) { <small class="field-error">Mật khẩu cần ít nhất 6 ký tự.</small> }
                                     </p>
                                 </div>
                                 <div class="col-12 col-md-6">
@@ -41,13 +44,14 @@
                                         <label for="pass">Confirm Password</label>
                                         <input type="password" formControlName="confirmPassword" title="Password" />
                                         <span id="valida" class="i i-close"></span>
+                                        @if (registerForm.controls.confirmPassword.touched && registerForm.hasError('passwordsMismatch')) { <small class="field-error">Mật khẩu xác nhận không khớp.</small> }
                                     </p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <button type="submit" id="do_login" value="REGISTER" title="Register"
-                        (click)="onSubmit()">Register</button>
+                    <button type="submit" id="do_login" value="REGISTER" title="Register" [disabled]="isSubmitting()"
+                        (click)="onSubmit()">{{ isSubmitting() ? 'Đang đăng ký...' : 'Register' }}</button>
                 </div>
             </div>
         </div>

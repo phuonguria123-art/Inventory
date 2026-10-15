@@ -1,6 +1,7 @@
 import { Injectable } from "@angular/core";
 import { ApplicationConfigService } from "./application-config.service";
 import { map } from "rxjs";
+import { AppConfig } from "../models/user/config.model";
 
 @Injectable({
     providedIn: "root",
@@ -10,7 +11,7 @@ export class PermissionService {
 
     getGrantedPolicy$(key: string) {
         return this.getStream().pipe(
-            map((grantedPolicies: any) => this.isPolicyGranted(key, grantedPolicies))
+            map((grantedPolicies: string[]) => this.isPolicyGranted(key, grantedPolicies))
         );
     }
 
@@ -53,7 +54,7 @@ export class PermissionService {
         return this.mapToPolicies(this.config.getAll());
     }
 
-    protected mapToPolicies(applicationConfiguration: any) {
+    protected mapToPolicies(applicationConfiguration: AppConfig | null | undefined): string[] {
         return applicationConfiguration?.permissions || [];
     }
 

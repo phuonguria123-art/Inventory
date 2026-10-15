@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { PurchaseOrderService } from '../../service/purchase-order.service';
 import { PurchaseOrderModel } from '../../../../core/models/features-models/purchase-order/purchase-order.model';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -8,6 +8,15 @@ import { ReceivePurchaseOrderModel } from '../../../../core/models/features-mode
 import { ProductService } from '../../../product/service/product.service';
 import { ProductModel } from '../../../../core/models/features-models/product/product.model';
 import { PurchaseOrderStatus } from '../../../../core/enum/purchase-order-status.enum';
+import { finalize, forkJoin } from 'rxjs';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
+import { ReceivePurchaseOrderLotModel } from '../../../../core/models/features-models/purchase-order/receive/receive-purchase-order-lot.model';
+
+const receiveLotDateValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const manufactureDate = control.get('manufactureDate')?.value as string | null;
+  const expiryDate = control.get('expiryDate')?.value as string | null;
+  return manufactureDate && expiryDate && expiryDate < manufactureDate ? { expiryBeforeManufacture: true } : null;
+};
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -34,11 +43,9 @@ export class PurchaseOrderReceive {
     orderDetails: this.fb.array<FormGroup>([], Validators.minLength(1))
   });
   ngOnInit(): void {
-    this.productService.getProducts(1, 100).subscribe({ next: result => this.products.set(result.items) });
     this.purchaseOrderId = this.route.snapshot.paramMap.get('id');
     if (this.purchaseOrderId) {
-      this.loadPurchaseOrder(this.purchaseOrderId);
-
+      this.loadData(this.purchaseOrderId);
     }
   }
   get orderDetails(): FormArray<FormGroup> {
@@ -48,25 +55,26 @@ export class PurchaseOrderReceive {
   createLotForm(): FormGroup {
     return this.fb.group({
       batchNumber: ['', [Validators.required, Validators.maxLength(100)]],
-      receivedQuantity: [1, [Validators.required, Validators.min(1)]],
+      receivedQuantity: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
       unitCost: [0, [Validators.required, Validators.min(0)]],
       manufactureDate: [null as string | null],
       expiryDate: [null as string | null],
       location: ['', Validators.maxLength(200)]
-    });
+    }, { validators: receiveLotDateValidator });
   }
   addLot(i: number): void { this.getLots(i).push(this.createLotForm()); }
-  removeLot(i: number, j: number): void { this.getLots(i).removeAt(j); }
+  removeLot(i: number, j: number): void { const lots = this.getLots(i); if (lots.length > 1) lots.removeAt(j); }
+  isDuplicateLot(i: number, j: number): boolean { const lots = this.getLots(i); const batch = String(lots.at(j).get('batchNumber')?.value ?? '').trim().toLocaleLowerCase(); return !!batch && lots.controls.some((l, x) => x !== j && String(l.get('batchNumber')?.value ?? '').trim().toLocaleLowerCase() === batch); }
   getReceivedQuantity(i: number): number { return this.getLots(i).controls.reduce((total, lot) => total + Number(lot.get('receivedQuantity')?.value || 0), 0); }
   getDifference(i: number): number { return this.getReceivedQuantity(i) - Number(this.orderDetails.at(i).get('orderedQuantity')?.value || 0); }
   getProductName(id: string): string { const product = this.products().find(item => item.id === id); return product ? `${product.code} - ${product.name}` : id; }
 
 
-  loadPurchaseOrder(id: string) {
+  private loadData(id: string): void {
     this.isLoading.set(true);
-    this.purchaseOrderService.getById(id).subscribe({
-      next: (result) => {
-        this.isLoading.set(false);
+    forkJoin({ order: this.purchaseOrderService.getById(id), products: this.productService.getProducts(1, 100) }).pipe(finalize(() => this.isLoading.set(false))).subscribe({
+      next: ({ order: result, products }) => {
+        this.products.set(products.items);
         if (![PurchaseOrderStatus.Sent, PurchaseOrderStatus.Confirmed, PurchaseOrderStatus.Shipping].includes(result.status)) {
           this.notification.error('Đơn mua hàng không ở trạng thái cho phép nhận hàng');
           this.router.navigate(['/purchase-orders/detail', id]);
@@ -75,10 +83,7 @@ export class PurchaseOrderReceive {
         this.currentOrder.set(result);
         this.partModelToForm(result);
       },
-      error: () => {
-        this.isLoading.set(false);
-        this.notification.error('Không thể tải thông tin đơn mua hàng');
-      },
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể tải dữ liệu nhận hàng')),
     })
   }
   partModelToForm(model: PurchaseOrderModel): void {
@@ -100,7 +105,8 @@ export class PurchaseOrderReceive {
     });
   }
   submit() {
-    if (this.receiveForm.invalid) { this.receiveForm.markAllAsTouched(); return; }
+    const hasDuplicateLots = this.orderDetails.controls.some((_, i) => this.getLots(i).controls.some((__, j) => this.isDuplicateLot(i, j)));
+    if (this.receiveForm.invalid || hasDuplicateLots) { this.receiveForm.markAllAsTouched(); this.notification.warning(hasDuplicateLots ? 'Mã lô bị trùng trong cùng sản phẩm.' : 'Vui lòng kiểm tra các trường chưa hợp lệ.'); return; }
     const invalidQuantityIndex = this.orderDetails.controls.findIndex((_, index) => this.getDifference(index) !== 0);
     if (invalidQuantityIndex >= 0) {
       this.notification.error(`Tổng số lượng các lô của sản phẩm ${invalidQuantityIndex + 1} phải bằng số lượng đặt`);
@@ -108,9 +114,9 @@ export class PurchaseOrderReceive {
     }
     this.setFormToModel();
     this.isSubmitting.set(true);
-    this.purchaseOrderService.received(this.purchaseOrderReceiveModel).subscribe({
-      next: () => { this.isSubmitting.set(false); this.notification.success('Nhận đơn mua hàng và nhập kho thành công'); this.router.navigate(['/purchase-orders/detail', this.purchaseOrderId]); },
-      error: () => { this.isSubmitting.set(false); this.notification.error('Không thể nhận đơn mua hàng'); },
+    this.purchaseOrderService.received(this.purchaseOrderReceiveModel).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: () => { this.notification.success('Nhận đơn mua hàng và nhập kho thành công'); this.router.navigate(['/purchase-orders/detail', this.purchaseOrderId]); },
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể nhận đơn mua hàng')),
     });
   }
   setFormToModel(): void {
@@ -122,17 +128,17 @@ export class PurchaseOrderReceive {
     this.purchaseOrderReceiveModel.orderDetails =
       value.orderDetails.map(detail => ({
         purchaseOrderDetailId: detail['purchaseOrderDetailId'],
-        lots: detail['lots'].map((lot: any) => ({
-          batchNumber: lot['batchNumber'],
-          receivedQuantity: lot['receivedQuantity'],
-          unitCost: lot['unitCost'],
+        lots: (detail['lots'] as Array<Record<string, unknown>>).map((lot): ReceivePurchaseOrderLotModel => ({
+          batchNumber: String(lot['batchNumber']).trim(),
+          receivedQuantity: Number(lot['receivedQuantity']),
+          unitCost: Number(lot['unitCost']),
           manufactureDate: lot['manufactureDate']
-            ? new Date(lot['manufactureDate'])
+            ? new Date(String(lot['manufactureDate']))
             : null,
           expiryDate: lot['expiryDate']
-            ? new Date(lot['expiryDate'])
+            ? new Date(String(lot['expiryDate']))
             : null,
-          location: lot['location']
+          location: String(lot['location'] ?? '').trim() || null
         }))
       }));
   }

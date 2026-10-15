@@ -1,11 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LoginModel } from '../../core/models/account/login.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ApplicationConfigService } from '../../core/services/application-config.service';
-import { switchMap } from 'rxjs';
+import { finalize, switchMap } from 'rxjs';
+import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
 
 @Component({
   imports: [RouterLink, ReactiveFormsModule],
@@ -20,10 +21,11 @@ export class Login {
 
   private route = inject(ActivatedRoute);
   loginModel: LoginModel = new LoginModel();
+  readonly isSubmitting = signal(false);
   private returnUrl = '/';
-  private loginForm = new FormGroup({
-    userName: new FormControl<string>('', { nonNullable: true }),
-    password: new FormControl<string>('', { nonNullable: true }),
+  readonly loginForm = new FormGroup({
+    userName: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(100), Validators.pattern(/.*\S.*/)] }),
+    password: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6), Validators.maxLength(100)] }),
   });
   constructor(private router: Router) { }
   ngOnInit() {
@@ -35,10 +37,12 @@ export class Login {
     }
   }
   onSubmit() {
+    if (this.loginForm.invalid || this.isSubmitting()) { this.loginForm.markAllAsTouched(); return; }
     this.parseFormToModel();
+    this.isSubmitting.set(true);
     this.authService
       .login(this.loginModel)
-      .pipe(switchMap(() => this.appConfigService.getAppConfig()))
+      .pipe(switchMap(() => this.appConfigService.getAppConfig()), finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: () => {
           this.notification.success('Đăng nhập thành công', 'Thành công');
@@ -48,12 +52,12 @@ export class Login {
         error: (err) => {
           this.appConfigService.clear();
           this.authService.logout();
-          this.notification.error('Đăng nhập thất bại', 'Lỗi');
+          this.notification.error(getApiErrorMessage(err, 'Đăng nhập thất bại'));
         },
       });
   }
   parseFormToModel() {
-    this.loginModel.userName = this.loginForm.controls.userName.value;
+    this.loginModel.userName = this.loginForm.controls.userName.value.trim();
     this.loginModel.password = this.loginForm.controls.password.value;
   }
 

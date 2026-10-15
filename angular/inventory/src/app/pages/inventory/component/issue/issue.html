@@ -21,26 +21,26 @@
         </div>
         <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
             <article class="card item" [formGroupName]="i">
-                <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger"
-                        (click)="removeProduct(i)">Xóa</button></div><label><span>Sản phẩm <b>*</b></span><select
+                <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong>@if (products.length > 1) {<button type="button" class="danger"
+                        (click)="removeProduct(i)">Xóa</button>}</div><label><span>Sản phẩm <b>*</b></span><select
                         formControlName="productId" (change)="onProductChange(i)">
                         <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) {
                         <option [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
-                    </select></label>
+                    </select>@if (isDuplicateProduct(i)) { <small class="field-error">Sản phẩm bị trùng trong phiếu xuất.</small> }</label>
                 <div formArrayName="lots" class="lots">@for (lot of getLots(i).controls; track lot; let j = $index) {
                     <div class="lot" [formGroupName]="j">
-                        <div class="lot-title"><strong>Lô {{ j + 1 }}</strong><button type="button" class="danger"
-                                (click)="removeLot(i,j)">Xóa lô</button></div>
+                        <div class="lot-title"><strong>Lô {{ j + 1 }}</strong>@if (getLots(i).length > 1) {<button type="button" class="danger"
+                                (click)="removeLot(i,j)">Xóa lô</button>}</div>
                         <div class="lot-grid two"><label><span>Số lô *</span><select formControlName="batchNumber">
                                     <option value="">Chọn lô</option>@for (option of getLotOptions(i); track option.id)
                                     { <option [value]="option.batchNumber">{{ option.batchNumber }} — còn {{
                                         option.quantity }} — HSD {{ option.expiryDate || 'Không có' }} — {{
                                         option.location || 'Chưa có vị trí' }}</option> }
                                 </select>@if (product.get('productId')?.value && getLotOptions(i).length === 0) {
-                                <small>Không có lô còn hàng trong kho này.</small> }</label><label><span>Số lượng
+                                <small>Không có lô còn hàng trong kho này.</small> }@if (isDuplicateLot(i,j)) { <small class="field-error">Lô bị chọn trùng.</small> }</label><label><span>Số lượng
                                     *</span><input type="number" min="1" [max]="getSelectedLot(i,j)?.quantity || null"
                                     formControlName="quantity">@if (getSelectedLot(i,j); as selectedLot) { <small>Còn
-                                    tối đa {{ selectedLot.quantity }} sản phẩm.</small> }</label></div>
+                                    tối đa {{ selectedLot.quantity }} sản phẩm.</small> }@if (lot.get('quantity')?.touched && lot.get('quantity')?.invalid) { <small class="field-error">Số lượng phải là số nguyên lớn hơn 0.</small> }@if (isQuantityExceeded(i,j)) { <small class="field-error">Số lượng vượt quá tồn của lô.</small> }</label></div>
                     </div> }
                 </div><button type="button" class="add-lot" (click)="addLot(i)">+ Thêm lô</button>
             </article> }

@@ -13,6 +13,8 @@ import { SupplierModel } from '../../../../core/models/features-models/supplier/
 import { PurchaseOrderModel } from '../../../../core/models/features-models/purchase-order/purchase-order.model';
 import { PurchaseOrderUpdateModel } from '../../../../core/models/features-models/purchase-order/purchase-order-update.model';
 import { PurchaseOrderStatus } from '../../../../core/enum/purchase-order-status.enum';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
+import { finalize, forkJoin } from 'rxjs';
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -35,6 +37,7 @@ export class PurchaseOrderForm {
   readonly productOptions = signal<ProductModel[]>([]);
   readonly isSubmitting = signal(false);
   readonly isLoading = signal(false);
+  readonly isLoadingOptions = signal(false);
   readonly currentOrder = signal<PurchaseOrderModel | null>(null);
   purchaseOrderId: string | null = null;
   mode: 'create' | 'edit' | 'view' = 'create';
@@ -61,16 +64,17 @@ export class PurchaseOrderForm {
   createProductForm(): FormGroup {
     return this.fb.group({
       productId: ['', Validators.required],
-      orderedQuantity: [0, [Validators.required, Validators.min(1)]],
+      orderedQuantity: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]],
       unitPrice: [0, [Validators.required, Validators.min(0)]],
       type: [''],
-      note: [''],
+      note: ['', Validators.maxLength(500)],
       id: [null as string | null]
     });
   }
 
   addProduct(): void { this.products.push(this.createProductForm()); }
-  removeProduct(i: number): void { this.products.removeAt(i); }
+  removeProduct(i: number): void { if (this.products.length > 1) this.products.removeAt(i); }
+  isDuplicateProduct(i: number): boolean { const id = this.products.at(i).get('productId')?.value; return !!id && this.products.controls.some((p, x) => x !== i && p.get('productId')?.value === id); }
   getLineTotal(i: number): number { const row = this.products.at(i).getRawValue(); return Number(row.orderedQuantity || 0) * Number(row.unitPrice || 0); }
   getSubTotal(): number { return this.products.controls.reduce((total, _, index) => total + this.getLineTotal(index), 0); }
   getGrandTotal(): number { return this.getSubTotal() + Number(this.orderForm.controls.freight.value || 0); }
@@ -85,14 +89,36 @@ export class PurchaseOrderForm {
   };
 
   private loadOptions(): void {
-    this.warehouseService.getList().subscribe({ next: data => this.warehouses.set(data) });
-    this.supplierService.getList().subscribe({ next: data => this.suppliers.set(data) });
-    this.productService.getProducts(1, 100).subscribe({ next: data => this.productOptions.set(data.items) });
+    this.isLoadingOptions.set(true);
+
+    forkJoin({
+      warehouses: this.warehouseService.getList(),
+      products: this.productService.getProducts(1, 100),
+      suppliers: this.supplierService.getList(),
+    })
+      .pipe(finalize(() => this.isLoadingOptions.set(false)))
+      .subscribe({
+        next: result => {
+          this.warehouses.set(result.warehouses);
+          this.productOptions.set(result.products.items);
+          this.suppliers.set(result.suppliers);
+        },
+        error: error => {
+          this.notification.error(
+            getApiErrorMessage(
+              error,
+              'Không thể tải dữ liệu cho biểu mẫu'
+            )
+          );
+        },
+      });
   }
 
   submit(): void {
-    if (this.orderForm.invalid) {
+    const hasDuplicateProducts = this.products.controls.some((_, i) => this.isDuplicateProduct(i));
+    if (this.orderForm.invalid || hasDuplicateProducts) {
       this.orderForm.markAllAsTouched();
+      this.notification.warning(hasDuplicateProducts ? 'Một sản phẩm đang bị thêm trùng trong đơn.' : 'Vui lòng kiểm tra các trường chưa hợp lệ.');
       return;
     }
     this.isSubmitting.set(true);
@@ -102,28 +128,24 @@ export class PurchaseOrderForm {
     const requestUpdate: PurchaseOrderUpdateModel = { ...common, orderDetails: value.products.map(product => ({ id: product['id'] || null, productId: product['productId'], orderedQuantity: Number(product['orderedQuantity']), unitPrice: Number(product['unitPrice']), type: product['type']?.trim() || null, note: product['note']?.trim() || '' })) };
 
     if (this.purchaseOrderId) {
-      this.purchaseOrderService.update(this.purchaseOrderId, requestUpdate).subscribe({
+      this.purchaseOrderService.update(this.purchaseOrderId, requestUpdate).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
         next: () => {
-          this.isSubmitting.set(false);
           this.notification.success('Cập nhật đơn mua hàng thành công');
           this.router.navigate(['/purchase-orders/detail', this.purchaseOrderId]);
         },
-        error: () => {
-          this.isSubmitting.set(false);
-          this.notification.error('Không thể cập nhật đơn mua hàng');
+        error: (err) => {
+          this.notification.error(getApiErrorMessage(err, 'Không thể cập nhật đơn mua hàng'));
         }
       });
     }
     else {
-      this.purchaseOrderService.create(requestCreate).subscribe({
+      this.purchaseOrderService.create(requestCreate).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
         next: () => {
-          this.isSubmitting.set(false);
           this.notification.success('Tạo đơn mua hàng thành công');
           this.router.navigate(['/purchase-orders']);
         },
-        error: () => {
-          this.isSubmitting.set(false);
-          this.notification.error('Không thể tạo đơn mua hàng');
+        error: (error) => {
+          this.notification.error(getApiErrorMessage(error, 'Không thể tạo đơn mua hàng'));
         }
       });
     }
@@ -134,19 +156,21 @@ export class PurchaseOrderForm {
     if (this.purchaseOrderId === null) {
       return;
     }
-    this.purchaseOrderService.updateStatus(this.purchaseOrderId, status).subscribe({
+    this.isSubmitting.set(true);
+    this.purchaseOrderService.updateStatus(this.purchaseOrderId, status).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: () => {
         this.notification.success('Cập nhật trạng thái đơn mua hàng thành công');
         this.loadPurchaseOrder(this.purchaseOrderId!);
       },
-      error: () => this.notification.error('Không thể cập nhật trạng thái đơn mua hàng')
+      error: (err) => this.notification.error(getApiErrorMessage(err, 'Không thể cập nhật trạng thái đơn mua hàng'))
     })
   }
   cancelOrder(): void {
     if (!this.purchaseOrderId || !window.confirm('Bạn có chắc muốn hủy đơn mua hàng này?')) return;
-    this.purchaseOrderService.cancel(this.purchaseOrderId).subscribe({
+    this.isSubmitting.set(true);
+    this.purchaseOrderService.cancel(this.purchaseOrderId).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: () => { this.notification.success('Hủy đơn mua hàng thành công'); this.loadPurchaseOrder(this.purchaseOrderId!); },
-      error: () => this.notification.error('Không thể hủy đơn mua hàng')
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể hủy đơn mua hàng'))
     });
   }
   canCancel(): boolean {
@@ -156,9 +180,8 @@ export class PurchaseOrderForm {
 
   loadPurchaseOrder(id: string) {
     this.isLoading.set(true);
-    this.purchaseOrderService.getById(id).subscribe({
+    this.purchaseOrderService.getById(id).pipe(finalize(() => this.isLoading.set(false))).subscribe({
       next: (result) => {
-        this.isLoading.set(false);
         this.currentOrder.set(result);
         if (this.mode === 'edit' && result.status !== PurchaseOrderStatus.Draft) {
           this.notification.error('Chỉ đơn mua hàng ở trạng thái nháp mới được cập nhật');
@@ -168,7 +191,7 @@ export class PurchaseOrderForm {
         this.partModelToForm(result);
         if (this.mode === 'view') this.orderForm.disable();
       },
-      error: () => { this.isLoading.set(false); this.notification.error('Không thể tải thông tin đơn mua hàng'); },
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể tải thông tin đơn mua hàng')),
     })
   }
 
@@ -191,14 +214,14 @@ export class PurchaseOrderForm {
           productId: [item.productId, Validators.required],
           orderedQuantity: [
             item.orderedQuantity,
-            [Validators.required, Validators.min(1)]
+            [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]
           ],
           unitPrice: [
             item.unitPrice,
             [Validators.required, Validators.min(1)]
           ],
           type: [item.type ?? ''],
-          note: [item.note ?? ''],
+          note: [item.note ?? '', Validators.maxLength(500)],
           id: [item.id]
         })
       );

@@ -9,10 +9,18 @@
         <div class="card info-grid"><label><span>Kho nhận <b>*</b></span><select formControlName="warehouseId">
                     <option value="">Chọn kho nhận</option>@for (warehouse of warehouses(); track warehouse.id) {
                     <option [value]="warehouse.id">{{ warehouse.code }} - {{ warehouse.name }}</option> }
-                </select></label><label><span>Purchase Order ID</span><input formControlName="purchaseOrderId"
-                    placeholder="Để trống nếu nhập trực tiếp"></label><label><span>Mã tham chiếu</span><input
-                    formControlName="reference" placeholder="Ví dụ: RECEIPT-001"></label><label class="full"><span>Ghi
-                    chú</span><textarea rows="3" formControlName="notes"></textarea></label></div>
+                </select>
+                @if (receiveForm.controls.warehouseId.touched && receiveForm.controls.warehouseId.hasError('required')) {
+                    <small class="field-error">Vui lòng chọn kho nhận.</small>
+                }
+                </label><label><span>Purchase Order ID</span><input formControlName="purchaseOrderId"
+                    placeholder="Để trống nếu nhập trực tiếp">
+                    @if (receiveForm.controls.purchaseOrderId.touched && receiveForm.controls.purchaseOrderId.hasError('pattern')) {
+                        <small class="field-error">Purchase Order ID không đúng định dạng GUID.</small>
+                    }
+                </label><label><span>Mã tham chiếu</span><input
+                    formControlName="reference" maxlength="100" placeholder="Ví dụ: RECEIPT-001"></label><label class="full"><span>Ghi
+                    chú</span><textarea rows="3" maxlength="500" formControlName="notes"></textarea></label></div>
         <div class="items-header">
             <div>
                 <h3>Danh sách sản phẩm</h3>
@@ -21,29 +29,43 @@
         </div>
         <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
             <article class="card item" [formGroupName]="i">
-                <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger"
-                        (click)="removeProduct(i)">Xóa</button></div><label><span>Sản phẩm <b>*</b></span><select
+                <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong>@if (products.length > 1) {<button type="button" class="danger"
+                        (click)="removeProduct(i)">Xóa</button>}</div><label><span>Sản phẩm <b>*</b></span><select
                         formControlName="productId">
                         <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) {
                         <option [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
-                    </select></label>
+                    </select>
+                    @if (product.get('productId')?.touched && product.get('productId')?.hasError('required')) {
+                        <small class="field-error">Vui lòng chọn sản phẩm.</small>
+                    }
+                    @if (isDuplicateProduct(i)) { <small class="field-error">Sản phẩm này đã có trong phiếu nhập.</small> }
+                    </label>
                 <div formArrayName="lots" class="lots">@for (lot of getLots(i).controls; track lot; let j = $index) {
                     <div class="lot" [formGroupName]="j">
-                        <div class="lot-title"><strong>Lô {{ j + 1 }}</strong><button type="button" class="danger"
-                                (click)="removeLot(i,j)">Xóa lô</button></div>
-                        <div class="lot-grid"><label><span>Số lô *</span><input
-                                    formControlName="batchNumber"></label><label><span>Số lượng *</span><input
-                                    type="number" min="1" formControlName="quantity"></label><label><span>Giá vốn
-                                    *</span><input type="number" min="0"
-                                    formControlName="unitCost"></label><label><span>Vị trí</span><input
+                        <div class="lot-title"><strong>Lô {{ j + 1 }}</strong>@if (getLots(i).length > 1) {<button type="button" class="danger"
+                                (click)="removeLot(i,j)">Xóa lô</button>}</div>
+                        <div class="lot-grid"><label><span>Số lô *</span><input maxlength="100"
+                                    formControlName="batchNumber">
+                                    @if (lot.get('batchNumber')?.touched && lot.get('batchNumber')?.hasError('required')) { <small class="field-error">Vui lòng nhập số lô.</small> }
+                                    @if (isDuplicateBatch(i, j)) { <small class="field-error">Số lô bị trùng trong cùng sản phẩm.</small> }
+                                </label><label><span>Số lượng *</span><input
+                                    type="number" min="1" step="1" formControlName="quantity">
+                                    @if (lot.get('quantity')?.touched && lot.get('quantity')?.invalid) { <small class="field-error">Số lượng phải là số nguyên lớn hơn 0.</small> }
+                                </label><label><span>Giá vốn
+                                    *</span><input type="number" min="0" step="0.01"
+                                    formControlName="unitCost">
+                                    @if (lot.get('unitCost')?.touched && lot.get('unitCost')?.invalid) { <small class="field-error">Giá vốn phải lớn hơn hoặc bằng 0.</small> }
+                                </label><label><span>Vị trí</span><input maxlength="200"
                                     formControlName="location"></label><label><span>Ngày sản xuất</span><input
                                     type="date" formControlName="manufactureDate"></label><label><span>Hạn sử
-                                    dụng</span><input type="date" formControlName="expiryDate"></label></div>
+                                    dụng</span><input type="date" formControlName="expiryDate">
+                                    @if (lot.touched && lot.hasError('expiryBeforeManufacture')) { <small class="field-error">Hạn sử dụng không được trước ngày sản xuất.</small> }
+                                </label></div>
                     </div> }
                 </div><button type="button" class="add-lot" (click)="addLot(i)">+ Thêm lô</button>
             </article> }
         </div>
-        <footer><a routerLink="/inventory">Hủy</a><button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ?
+        <footer><a routerLink="/inventory">Hủy</a><button type="submit" [disabled]="isSubmitting() || isLoadingOptions()">{{ isSubmitting() ?
                 'Đang xử lý...' : 'Xác nhận nhập kho' }}</button></footer>
     </form>
 </section>

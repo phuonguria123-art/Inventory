@@ -23,21 +23,24 @@
 
     <span class="navbar__divider" aria-hidden="true"></span>
 
-    <button class="profile" type="button" aria-label="Mở menu tài khoản">
-      <span class="profile__avatar">NA</span>
+    <button class="profile" type="button" aria-label="Mở menu tài khoản" [attr.aria-expanded]="isProfileMenuOpen()"
+      (click)="toggleProfileMenu()">
+      <span class="profile__avatar"> {{ initials() }}</span>
       <span class="profile__details">
-        <strong>Nguyễn An</strong>
-        <small>Quản trị viên</small>
+        <strong>{{ config()?.userName || 'Người dùng' }} | <small>{{ roleNames() }}</small> </strong>
+        <small>{{ config()?.email }}</small>
+
       </span>
       <svg class="profile__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="m8 10 4 4 4-4" />
       </svg>
-      <span class="profile__menu" aria-hidden="true" style="background-color: violet;">
-        <button type="button">Tài khoản</button>
-        <button type="button" (click)="logout()">Đăng xuất</button>
-      </span>
-
     </button>
-
+    @if (isProfileMenuOpen()) {
+    <div class="profile__menu">
+      <button type="button" (click)="logout()">
+        Đăng xuất
+      </button>
+    </div>
+    }
   </div>
 </header>

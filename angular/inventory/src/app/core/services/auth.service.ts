@@ -105,20 +105,19 @@ export class AuthService {
         this.currentUserSubject.next(user);
     }
 
-    tryRefreshToken() {
+    tryRefreshToken(): Observable<TokenModel> {
         return this.refreshToken().pipe(
-            catchError(() => {
+            catchError((error) => {
+                if (this.currentUserValue) {
+                    this.logout();
 
-                this.logout();
+                    this.notification.error(
+                        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                        'Hết phiên đăng nhập'
+                    );
+                }
 
-                this.notification.error(
-                    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
-                    "Lỗi"
-                );
-
-                return throwError(
-                    () => new Error("Refresh token failed")
-                );
+                return throwError(() => error);
             })
         );
     }

@@ -9,6 +9,8 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { ProductService } from '../../../product/service/product.service';
 import { WarehouseService } from '../../../warehouse/service/warehouse.service';
 import { InventoryService } from '../../service/inventory.service';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
+import { finalize } from 'rxjs';
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -38,12 +40,14 @@ export class Adjust {
   ngOnInit(): void { this.loadOptions(); this.addProduct(); }
   get products(): FormArray<FormGroup> { return this.adjustForm.controls.products; }
   getLots(i: number): FormArray<FormGroup> { return this.products.at(i).get('lots') as FormArray<FormGroup>; }
-  createLotForm(): FormGroup { return this.fb.group({ batchNumber: ['', Validators.required], actualQuantity: [0, [Validators.required, Validators.min(0)]] }); }
+  createLotForm(): FormGroup { return this.fb.group({ batchNumber: ['', [Validators.required, Validators.maxLength(100)]], actualQuantity: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]] }); }
   createProductForm(): FormGroup { return this.fb.group({ productId: ['', Validators.required], lots: this.fb.array<FormGroup>([this.createLotForm()], Validators.minLength(1)) }); }
   addProduct(): void { this.products.push(this.createProductForm()); }
   addLot(i: number): void { this.getLots(i).push(this.createLotForm()); }
-  removeProduct(i: number): void { this.products.removeAt(i); this.reindexLotOptions(i); }
-  removeLot(i: number, j: number): void { this.getLots(i).removeAt(j); }
+  removeProduct(i: number): void { if (this.products.length > 1) { this.products.removeAt(i); this.reindexLotOptions(i); } }
+  removeLot(i: number, j: number): void { const lots = this.getLots(i); if (lots.length > 1) lots.removeAt(j); }
+  isDuplicateProduct(i: number): boolean { const id = this.products.at(i).get('productId')?.value; return !!id && this.products.controls.some((p, x) => x !== i && p.get('productId')?.value === id); }
+  isDuplicateLot(i: number, j: number): boolean { const lots = this.getLots(i); const batch = lots.at(j).get('batchNumber')?.value; return !!batch && lots.controls.some((l, x) => x !== j && l.get('batchNumber')?.value === batch); }
 
   onWarehouseChange(): void {
     this.lotsByProduct.set({});
@@ -62,13 +66,25 @@ export class Adjust {
   }
 
   submit(): void {
-    if (this.adjustForm.invalid) { this.adjustForm.markAllAsTouched(); return; }
+    const hasDuplicates = this.products.controls.some((_, i) => this.isDuplicateProduct(i) || this.getLots(i).controls.some((__, j) => this.isDuplicateLot(i, j)));
+    if (this.adjustForm.invalid || hasDuplicates) { this.adjustForm.markAllAsTouched(); this.notification.warning('Vui lòng kiểm tra sản phẩm, lô và số lượng kiểm kê.'); return; }
     this.isSubmitting.set(true);
     const value = this.adjustForm.getRawValue();
-    const request = { ...value, reference: value.reference.trim() || undefined, notes: value.notes.trim() } as AdjustInventoryModel;
-    this.inventoryService.adjust(request).subscribe({
-      next: () => { this.isSubmitting.set(false); this.notification.success('Kiểm kê kho thành công'); this.router.navigate(['/inventory']); },
-      error: () => { this.isSubmitting.set(false); this.notification.error('Không thể cập nhật kết quả kiểm kê'); }
+    const request: AdjustInventoryModel = {
+      warehouseId: value.warehouseId,
+      reference: value.reference.trim() || undefined,
+      notes: value.notes.trim(),
+      products: value.products.map(product => ({
+        productId: String(product['productId']),
+        lots: (product['lots'] as Array<Record<string, unknown>>).map(lot => ({
+          batchNumber: String(lot['batchNumber']).trim(),
+          actualQuantity: Number(lot['actualQuantity']),
+        })),
+      })),
+    };
+    this.inventoryService.adjust(request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: () => { this.notification.success('Kiểm kê kho thành công'); this.router.navigate(['/inventory']); },
+      error: (err) => this.notification.error(getApiErrorMessage(err, 'Không thể cập nhật kết quả kiểm kê'))
     });
   }
 

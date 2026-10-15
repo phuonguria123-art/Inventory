@@ -5,6 +5,8 @@ import { SupplierCreateModel } from '../../../../core/models/features-models/sup
 import { SupplierUpdateModel } from '../../../../core/models/features-models/supplier/supplier-update.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { SupplierService } from '../../service/supplier.service';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-supplier-form',
@@ -19,19 +21,20 @@ export class SupplierForm {
   private readonly router = inject(Router);
 
   readonly isSubmitting = signal(false);
+  readonly isLoading = signal(false);
   supplierId: string | null = null;
   mode: 'create' | 'edit' | 'view' = 'create';
 
   readonly supplierForm = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200), Validators.pattern(/.*\S.*/)] }),
+    code: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(50), Validators.pattern(/.*\S.*/)] }),
     phone: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.pattern(/^[0-9+() .-]{8,20}$/)],
     }),
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
-    address: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    contactPerson: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(254)] }),
+    address: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(500), Validators.pattern(/.*\S.*/)] }),
+    contactPerson: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200), Validators.pattern(/.*\S.*/)] }),
   });
 
   ngOnInit(): void {
@@ -60,29 +63,25 @@ export class SupplierForm {
 
     this.isSubmitting.set(true);
     if (this.supplierId) {
-      this.supplierService.updateSupplier(this.supplierId, request).subscribe({
+      this.supplierService.updateSupplier(this.supplierId, request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
         next: () => {
-          this.isSubmitting.set(false);
           this.notification.success('Cập nhật nhà cung cấp thành công');
           this.router.navigate(['/supplier']);
         },
-        error: () => {
-          this.isSubmitting.set(false);
-          this.notification.error('Không thể cập nhật nhà cung cấp');
+        error: (error) => {
+          this.notification.error(getApiErrorMessage(error, 'Không thể cập nhật nhà cung cấp'));
         },
       });
       return;
     }
 
-    this.supplierService.createSupplier(request).subscribe({
+    this.supplierService.createSupplier(request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: (createdSupplier) => {
-        this.isSubmitting.set(false);
         this.notification.success('Tạo nhà cung cấp thành công');
         this.router.navigate(['/supplier/detail', createdSupplier.id]);
       },
-      error: () => {
-        this.isSubmitting.set(false);
-        this.notification.error('Không thể tạo nhà cung cấp');
+      error: (err) => {
+        this.notification.error(getApiErrorMessage(err, 'Không thể tạo nhà cung cấp'));
       },
     });
   }
@@ -92,7 +91,8 @@ export class SupplierForm {
   }
 
   private loadSupplier(id: string): void {
-    this.supplierService.getSupplierById(id).subscribe({
+    this.isLoading.set(true);
+    this.supplierService.getSupplierById(id).pipe(finalize(() => this.isLoading.set(false))).subscribe({
       next: (supplier) => {
         this.supplierForm.patchValue({
           name: supplier.name,
@@ -104,7 +104,7 @@ export class SupplierForm {
         });
         if (this.mode === 'view') this.supplierForm.disable();
       },
-      error: () => this.notification.error('Không thể tải thông tin nhà cung cấp'),
+      error: error => this.notification.error(getApiErrorMessage(error, 'Không thể tải thông tin nhà cung cấp')),
     });
   }
 }

@@ -111,7 +111,7 @@ const routes: Routes = [
     data: { requiredPolicy: 'inventory.read' }
   },
   {
-    path: "inventory/transactions",
+    path: "transactions",
     component: InventoryTransaction,
     canActivate: [PermissionGuard],
     data: { requiredPolicy: 'inventory.read' }

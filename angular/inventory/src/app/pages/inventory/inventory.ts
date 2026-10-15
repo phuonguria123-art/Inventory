@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { InventoryModel } from '../../core/models/features-models/inventory/inventory.model';
 import { NotificationService } from '../../core/services/notification.service';
 import { InventoryService } from './service/inventory.service';
+import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
 
 @Component({
   imports: [RouterLink],
@@ -44,9 +45,9 @@ export class Inventory {
         this.totalPages.set(result.totalPages);
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading.set(false);
-        this.notification.error('Không thể tải danh sách tồn kho');
+        this.notification.error(getApiErrorMessage(err, 'Không thể tải danh sách tồn kho'));
       },
     });
   }

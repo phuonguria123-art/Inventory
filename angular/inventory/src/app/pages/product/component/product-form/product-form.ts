@@ -7,6 +7,8 @@ import { SupplierModel } from '../../../../core/models/features-models/supplier/
 import { NotificationService } from '../../../../core/services/notification.service';
 import { SupplierService } from '../../../supplier/service/supplier.service';
 import { ProductService } from '../../service/product.service';
+import { finalize } from 'rxjs';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
 
 @Component({
   selector: 'app-product-form',
@@ -22,15 +24,16 @@ export class ProductForm {
   private readonly router = inject(Router);
 
   readonly suppliers = signal<SupplierModel[]>([]);
+  readonly isLoading = signal(false);
   readonly isSubmitting = signal(false);
   productId: string | null = null;
   mode: 'create' | 'edit' | 'view' = 'create';
 
   readonly productForm = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    imgUrl: new FormControl('', { nonNullable: true }),
-    origin: new FormControl('', { nonNullable: true }),
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200), Validators.pattern(/.*\S.*/)] }),
+    code: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(50), Validators.pattern(/.*\S.*/)] }),
+    imgUrl: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(2000), Validators.pattern(/^(https?:\/\/.*)?$/i)] }),
+    origin: new FormControl('', { nonNullable: true, validators: Validators.maxLength(200) }),
     weight: new FormControl(0, { nonNullable: true, validators: [Validators.min(0)] }),
     unitPrice: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(0)] }),
     supplierId: new FormControl('', { nonNullable: true }),
@@ -66,29 +69,25 @@ export class ProductForm {
     this.isSubmitting.set(true);
 
     if (this.productId) {
-      this.productService.updateProduct(this.productId, request).subscribe({
+      this.productService.updateProduct(this.productId, request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
         next: () => {
-          this.isSubmitting.set(false);
           this.notification.success('Cập nhật sản phẩm thành công');
           this.router.navigate(['/product']);
         },
-        error: () => {
-          this.isSubmitting.set(false);
-          this.notification.error('Không thể cập nhật sản phẩm');
+        error: (error) => {
+          this.notification.error(getApiErrorMessage(error, 'Không thể cập nhật sản phẩm'));
         },
       });
       return;
     }
 
-    this.productService.createProduct(request).subscribe({
+    this.productService.createProduct(request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
       next: (createdProduct) => {
-        this.isSubmitting.set(false);
         this.notification.success('Tạo sản phẩm thành công');
         this.router.navigate(['/product/detail', createdProduct.id]);
       },
-      error: () => {
-        this.isSubmitting.set(false);
-        this.notification.error('Không thể tạo sản phẩm');
+      error: (error) => {
+        this.notification.error(getApiErrorMessage(error, 'Không thể tạo sản phẩm'));
       },
     });
   }
@@ -98,7 +97,8 @@ export class ProductForm {
   }
 
   private loadProduct(id: string): void {
-    this.productService.getProductById(id).subscribe({
+    this.isLoading.set(true);
+    this.productService.getProductById(id).pipe(finalize(() => this.isLoading.set(false))).subscribe({
       next: (product) => {
         this.productForm.patchValue({
           name: product.name,
@@ -111,14 +111,14 @@ export class ProductForm {
         });
         if (this.mode === 'view') this.productForm.disable();
       },
-      error: () => this.notification.error('Không thể tải thông tin sản phẩm'),
+      error: error => this.notification.error(getApiErrorMessage(error, 'Không thể tải thông tin sản phẩm')),
     });
   }
 
   private loadSuppliers(): void {
     this.supplierService.getList().subscribe({
       next: (suppliers) => this.suppliers.set(suppliers.filter((supplier) => supplier.isActive)),
-      error: () => this.notification.error('Không thể tải danh sách nhà cung cấp'),
+      error: error => this.notification.error(getApiErrorMessage(error, 'Không thể tải danh sách nhà cung cấp')),
     });
   }
 }

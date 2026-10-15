@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { SupplierModel } from '../../core/models/features-models/supplier/supplier.model';
 import { NotificationService } from '../../core/services/notification.service';
 import { SupplierService } from './service/supplier.service';
+import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
 
 @Component({
   imports: [RouterLink],
@@ -43,7 +44,7 @@ export class Supplier {
         this.notification.success('Xóa nhà cung cấp thành công');
         this.getSuppliers();
       },
-      error: () => this.notification.error('Không thể xóa nhà cung cấp'),
+      error: (error) => this.notification.error(getApiErrorMessage(error, 'Không thể xóa nhà cung cấp')),
     });
   }
 }

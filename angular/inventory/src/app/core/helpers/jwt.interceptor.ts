@@ -37,26 +37,23 @@ export class AuthInterceptor implements HttpInterceptor {
 
     const currentUser =
       this.authService.currentUserValue;
+    const tokenUsed = this.authService.currentUserValue?.accessToken;
 
     if (
       isApiRequest &&
       !isPublicAuthRequest &&
-      currentUser?.accessToken
+      tokenUsed
     ) {
       request = this.addAccessToken(
         request,
-        currentUser.accessToken
+        tokenUsed
       );
     }
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        if (error.status !== 401) {
-          return throwError(() => error);
-        }
-
         // Không xử lý 401 của API bên ngoài.
-        if (!isApiRequest) {
+        if (error.status !== 401 || !isApiRequest) {
           return throwError(() => error);
         }
 
@@ -67,10 +64,24 @@ export class AuthInterceptor implements HttpInterceptor {
 
         // Refresh token cũng hết hạn hoặc không hợp lệ.
         if (isRefreshRequest) {
-          this.authService.logout();
           return throwError(() => error);
         }
+        const latestToken =
+          this.authService.currentUserValue?.accessToken;
 
+        /*
+         * Request bị 401 dùng token cũ, nhưng một request khác đã
+         * refresh thành công. Chỉ retry bằng token mới.
+         */
+        if (
+          tokenUsed &&
+          latestToken &&
+          tokenUsed !== latestToken
+        ) {
+          return next.handle(
+            this.addAccessToken(request, latestToken)
+          );
+        }
         return this.refreshAndRetry(request, next);
       })
     );

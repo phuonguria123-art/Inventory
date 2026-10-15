@@ -8,6 +8,9 @@ import { ProductService } from '../../../product/service/product.service';
 import { WarehouseService } from '../../../warehouse/service/warehouse.service';
 import { InventoryService } from '../../service/inventory.service';
 import { InventoryItemModel } from '../../../../core/models/features-models/inventory-item/inventory-item.model';
+import { finalize } from 'rxjs';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
+import { IssueInventoryModel } from '../../../../core/models/features-models/inventory/issue/issue-inventory.model';
 
 @Component({ imports: [ReactiveFormsModule, RouterLink], selector: 'app-issue', styleUrl: './issue.scss', templateUrl: './issue.html' })
 export class Issue {
@@ -31,12 +34,16 @@ export class Issue {
   ngOnInit(): void { this.loadOptions(); this.addProduct(); }
   get products(): FormArray<FormGroup> { return this.issueForm.controls.products; }
   getLots(i: number): FormArray<FormGroup> { return this.products.at(i).get('lots') as FormArray<FormGroup>; }
-  createLotForm(): FormGroup { return this.fb.group({ batchNumber: ['', [Validators.required, Validators.maxLength(100)]], quantity: [1, [Validators.required, Validators.min(1)]] }); }
+  createLotForm(): FormGroup { return this.fb.group({ batchNumber: ['', [Validators.required, Validators.maxLength(100)]], quantity: [1, [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)]] }); }
   createProductForm(): FormGroup { return this.fb.group({ productId: ['', Validators.required], lots: this.fb.array<FormGroup>([this.createLotForm()], Validators.minLength(1)) }); }
   addProduct(): void { this.products.push(this.createProductForm()); }
   addLot(i: number): void { this.getLots(i).push(this.createLotForm()); }
-  removeProduct(i: number): void { this.products.removeAt(i); this.reindexLotOptions(i); }
-  removeLot(i: number, j: number): void { this.getLots(i).removeAt(j); }
+  removeProduct(i: number): void { if (this.products.length > 1) { this.products.removeAt(i); this.reindexLotOptions(i); } }
+  removeLot(i: number, j: number): void { const lots = this.getLots(i); if (lots.length > 1) lots.removeAt(j); }
+
+  isDuplicateProduct(i: number): boolean { const id = this.products.at(i).get('productId')?.value; return !!id && this.products.controls.some((p, x) => x !== i && p.get('productId')?.value === id); }
+  isDuplicateLot(i: number, j: number): boolean { const lots = this.getLots(i); const batch = lots.at(j).get('batchNumber')?.value; return !!batch && lots.controls.some((l, x) => x !== j && l.get('batchNumber')?.value === batch); }
+  isQuantityExceeded(i: number, j: number): boolean { const selected = this.getSelectedLot(i, j); const quantity = Number(this.getLots(i).at(j).get('quantity')?.value); return !!selected && quantity > selected.quantity; }
 
   onWarehouseChange(): void {
     this.lotsByProduct.set({});
@@ -62,12 +69,25 @@ export class Issue {
   }
 
   submit(): void {
-    if (this.issueForm.invalid) { this.issueForm.markAllAsTouched(); return; }
+    const businessInvalid = this.products.controls.some((_, i) => this.isDuplicateProduct(i) || this.getLots(i).controls.some((__, j) => this.isDuplicateLot(i, j) || this.isQuantityExceeded(i, j)));
+    if (this.issueForm.invalid || businessInvalid) { this.issueForm.markAllAsTouched(); this.notification.warning('Vui lòng kiểm tra sản phẩm, lô và số lượng xuất.'); return; }
     this.isSubmitting.set(true);
     const value = this.issueForm.getRawValue();
-    this.inventoryService.issue({ ...value, reference: value.reference.trim() || undefined, notes: value.notes.trim() || undefined } as any).subscribe({
-      next: () => { this.isSubmitting.set(false); this.notification.success('Xuất kho thành công'); this.router.navigate(['/inventory']); },
-      error: () => { this.isSubmitting.set(false); this.notification.error('Không thể xuất kho'); },
+    const request: IssueInventoryModel = {
+      warehouseId: value.warehouseId,
+      reference: value.reference.trim() || undefined,
+      notes: value.notes.trim() || undefined,
+      products: value.products.map(product => ({
+        productId: String(product['productId']),
+        lots: (product['lots'] as Array<Record<string, unknown>>).map(lot => ({
+          batchNumber: String(lot['batchNumber']).trim(),
+          quantity: Number(lot['quantity']),
+        })),
+      })),
+    };
+    this.inventoryService.issue(request).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: () => { this.notification.success('Xuất kho thành công'); this.router.navigate(['/inventory']); },
+      error: err => this.notification.error(getApiErrorMessage(err, 'Không thể xuất kho')),
     });
   }
   private loadOptions(): void { this.warehouseService.getList().subscribe({ next: (data) => this.warehouses.set(data) }); this.productService.getProducts(1, 100).subscribe({ next: (data) => this.productOptions.set(data.items) }); }

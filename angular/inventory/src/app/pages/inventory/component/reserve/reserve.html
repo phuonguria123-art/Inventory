@@ -32,13 +32,13 @@
     </div>
     <div formArrayName="products" class="items">@for (product of products.controls; track product; let i = $index) {
       <article class="card item" [formGroupName]="i">
-        <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong><button type="button" class="danger"
-            (click)="removeProduct(i)">Xóa</button></div>
+        <div class="item-title"><strong>Sản phẩm {{ i + 1 }}</strong>@if (products.length > 1) {<button type="button" class="danger"
+            (click)="removeProduct(i)">Xóa</button>}</div>
         <div class="product-grid"><label><span>Sản phẩm <b>*</b></span><select formControlName="productId">
               <option value="">Chọn sản phẩm</option>@for (option of productOptions(); track option.id) { <option
                 [value]="option.id">{{ option.code }} - {{ option.name }}</option> }
-            </select></label><label><span>Số lượng <b>*</b></span><input formControlName="quantity" type="number"
-              min="1"></label></div>
+            </select>@if (isDuplicateProduct(i)) { <small class="field-error">Sản phẩm bị trùng.</small> }</label><label><span>Số lượng <b>*</b></span><input formControlName="quantity" type="number"
+              min="1" step="1">@if (product.get('quantity')?.touched && product.get('quantity')?.invalid) { <small class="field-error">Số lượng phải là số nguyên lớn hơn 0.</small> }</label></div>
       </article> }
     </div>
     <footer><a routerLink="/inventory">Hủy thao tác</a><button type="submit"

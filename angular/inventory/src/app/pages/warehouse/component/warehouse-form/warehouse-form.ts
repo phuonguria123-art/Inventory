@@ -1,10 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { WarehouseService } from '../../service/warehouse.service';
 import { WarehouseCreateModel } from '../../../../core/models/features-models/warehouse/warehouse-create.model';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { WarehouseUpdateModel } from '../../../../core/models/features-models/warehouse/warehouse-update.model';
 import { WarehouseModel } from '../../../../core/models/features-models/warehouse/warehouse.model';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { finalize } from 'rxjs';
+import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -14,6 +17,9 @@ import { WarehouseModel } from '../../../../core/models/features-models/warehous
 })
 export class WarehouseForm {
   private readonly warehouseService = inject(WarehouseService);
+  private readonly notification = inject(NotificationService);
+  readonly isLoading = signal(false);
+  readonly isSubmitting = signal(false);
   createModel: WarehouseCreateModel = new WarehouseCreateModel();
   updateModel: WarehouseUpdateModel = new WarehouseUpdateModel();
   warehouseModel: WarehouseModel = new WarehouseModel();
@@ -21,11 +27,11 @@ export class WarehouseForm {
   mode: 'create' | 'edit' | 'view' = 'create';
 
   warehouseForm = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    code: new FormControl('', { nonNullable: true, validators: Validators.required }),
+    name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200), Validators.pattern(/.*\S.*/)] }),
+    code: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(50), Validators.pattern(/.*\S.*/)] }),
     phone: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^0[0-9]{9}$/)] }),
-    address: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    description: new FormControl('', { nonNullable: true }),
+    address: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(500), Validators.pattern(/.*\S.*/)] }),
+    description: new FormControl('', { nonNullable: true, validators: Validators.maxLength(1000) }),
     capacity: new FormControl(0, { nonNullable: true, validators: [Validators.required, Validators.min(1)] }),
     isMain: new FormControl(false, { nonNullable: true })
   });
@@ -50,36 +56,64 @@ export class WarehouseForm {
 
     if (this.warehouseForm.invalid) {
       this.warehouseForm.markAllAsTouched();
+      this.notification.warning(
+        'Vui lòng kiểm tra lại các trường bắt buộc.'
+      );
       return;
     }
 
     this.mapFormToModel();
-
+    this.isSubmitting.set(true);
     if (this.warehouseId) {
-      this.warehouseService.updateWarehouse(this.warehouseId, this.updateModel).subscribe({
-        next: () => this.router.navigateByUrl('/warehouse'),
-        error: (err) => console.error(err)
-      });
+      this.updateWarehouse();
     }
     else {
-      this.warehouseService.createWarehouse(this.createModel).subscribe({
-        next: (res) => this.router.navigate(['/warehouse/detail', res.id]),
-        error: (err) => console.error(err)
-      });
+      this.createWarehouse();
     }
   }
+  private createWarehouse(): void {
+    this.warehouseService.createWarehouse(this.createModel)
+      .pipe(finalize(() => this.isSubmitting.set(false)))
+      .subscribe({
+        next: (res) => { this.notification.success('Tạo kho thành công'); this.router.navigate(['/warehouse/detail', res.id]); },
+        error: (err) => this.notification.error(getApiErrorMessage(err, 'Không thể tạo kho'))
+      });
+  }
 
+  private updateWarehouse(): void {
+    if (this.warehouseId == null) {
+      return;
+    }
+    this.warehouseService.updateWarehouse(this.warehouseId, this.updateModel)
+      .pipe(finalize(() => this.isSubmitting.set(false)))
+      .subscribe({
+        next: () => { this.notification.success('Cập nhật kho thành công'); this.router.navigateByUrl('/warehouse'); },
+        error: (err) => this.notification.error(getApiErrorMessage(err, 'Không thể cập nhật kho'))
+      });
+  }
   getWarehouseDetail(id: string): void {
-    this.warehouseService.getWarehouseById(id).subscribe({
-      next: (res) => {
-        this.warehouseModel = res;
-        this.setModelToForm();
-        if (this.mode === 'view') {
-          this.warehouseForm.disable();
-        }
-      },
-      error: (err) => console.error(err)
-    });
+    this.isLoading.set(true);
+    this.warehouseService.getWarehouseById(id)
+      .pipe(finalize(() => this.isLoading.set(false)))
+      .subscribe({
+        next: (warehouse) => {
+          this.warehouseModel = warehouse;
+          this.setModelToForm();
+          if (this.mode === 'view') {
+            this.warehouseForm.disable();
+          }
+        },
+        error: error => {
+          this.notification.error(
+            getApiErrorMessage(
+              error,
+              'Không thể tải thông tin kho'
+            )
+          );
+
+          this.router.navigate(['/warehouse']);
+        },
+      });
   }
 
   enableEdit(): void {
@@ -101,7 +135,8 @@ export class WarehouseForm {
   }
 
   private mapFormToModel(): void {
-    const formValue = this.warehouseForm.getRawValue();
+    const value = this.warehouseForm.getRawValue();
+    const formValue = { ...value, name: value.name.trim(), code: value.code.trim(), phone: value.phone.trim(), address: value.address.trim(), description: value.description.trim() };
 
     if (this.warehouseId) {
       this.updateModel = {
