@@ -1,5 +1,6 @@
 using AutoMapper;
 using Inventory.Api.Authorization;
+using Inventory.Api.ExceptionHandlers;
 using Inventory.Application.Authorization;
 using Inventory.Application.Interfaces;
 using Inventory.Application.Inventory;
@@ -80,6 +81,7 @@ namespace Inventory.Api
             builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
             builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
             builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+            builder.Services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
@@ -88,6 +90,7 @@ namespace Inventory.Api
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+            // Cách hiểu chính xác hơn là: Đăng ký UserService để DI cung cấp nó thông qua interface IUserService, với lifetime là Scoped.
             builder.Services.AddScoped<IUserService, UserService>();
 
             builder.Services.AddAutoMapper(cfg =>
@@ -97,6 +100,8 @@ namespace Inventory.Api
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddProblemDetails();
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddSwaggerGen(options =>
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -132,31 +137,7 @@ namespace Inventory.Api
                 app.UseSwaggerUI();
             }
             //map exception sang JSON
-            app.UseExceptionHandler(exceptionHandler =>
-            {
-                exceptionHandler.Run(async context =>
-                {
-                    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
-
-                    var statusCode = exception switch
-                    {
-                        NotFoundException => StatusCodes.Status404NotFound,
-                        ValidationException => StatusCodes.Status400BadRequest,
-                        ConflictException => StatusCodes.Status409Conflict,
-                        _ => StatusCodes.Status500InternalServerError
-                    };
-
-                    context.Response.StatusCode = statusCode;
-                    context.Response.ContentType = "application/json";
-
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        success = false,
-                        message = exception?.Message ?? "Có lỗi xảy ra",
-                        errors = new[] { exception?.Message ?? "Có lỗi xảy ra" }
-                    });
-                });
-            });
+            app.UseExceptionHandler();
 
             app.UseHttpsRedirection();
             app.UseCors(frontendCorsPolicy);

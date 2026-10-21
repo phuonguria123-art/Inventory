@@ -85,7 +85,7 @@ namespace Inventory.Infrastructure.Repositories
                 query = query.Where(x => x.CreateDate.Date == createDate.Value.Date);
             }
             var totalCount = await query.CountAsync();
-            var result = await query.OrderBy(x => x.CreateDate).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
+            var result = await query.OrderByDescending(x => x.CreateDate).ThenByDescending(x => x.Id).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync();
             return (result, totalCount);
         }
 

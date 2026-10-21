@@ -71,7 +71,7 @@ public sealed class InventoryService(
             throw new NotFoundException("Kho không tồn tại.");
         if (!await productRepository.ExistByIdAsync(productId))
             throw new NotFoundException("Sản phẩm không tồn tại.");
-        return mapper.Map<List<InventoryItemDto>>(await inventoryRepository.GetListItemAsync(warehouseId, productId)) ;
+        return mapper.Map<List<InventoryItemDto>>(await inventoryRepository.GetListItemAsync(warehouseId, productId));
     }
 
     public async Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
@@ -304,7 +304,7 @@ public sealed class InventoryService(
             throw new ValidationException("Thời hạn giữ hàng phải lớn hơn thời điểm hiện tại.");
 
     }
-//giữ hàng/hủy hàng
+    //giữ hàng/hủy hàng
     public async Task<List<InventoryDto>> ReserveAsync(ReserveInventoryRequestDto request, Guid userId)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -620,6 +620,7 @@ public sealed class InventoryService(
                     {
                         throw new ConflictException("Dữ liệu số lượng giữ hàng không nhất quán.");
                     }
+
                 }
                 else if (inventory.AvailableQuantity < requestedQuantity)
                 {
@@ -798,7 +799,7 @@ public sealed class InventoryService(
         }
 
     }
-   
+
     private async Task EnsureProductAndWarehouseExistAsync(Guid productId, Guid warehouseId)
     {
         if (!await productRepository.ExistByIdAsync(productId))

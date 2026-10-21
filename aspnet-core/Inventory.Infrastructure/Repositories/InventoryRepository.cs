@@ -180,6 +180,7 @@ namespace Inventory.Infrastructure.Repositories
                 .Where(x => x.QuantityOnHand - x.ReservedQuantity <= x.MinStock)
                 .OrderBy(x => x.QuantityOnHand - x.ReservedQuantity)
                 .ThenBy(x => x.Product.Name)
+                .Take(20)
                 .ToListAsync();
         }
         public async Task<List<InventoryBalance>> GetExcessStockAsync()
@@ -191,6 +192,7 @@ namespace Inventory.Infrastructure.Repositories
                 .Where(x => x.QuantityOnHand > x.MaxStock)
                 .OrderByDescending(x => x.QuantityOnHand - x.MaxStock)
                 .ThenBy(x => x.Product.Name)
+                .Take(20)
                 .ToListAsync();
         }
         public async Task ExecuteInTransactionAsync(Func<Task> operation)

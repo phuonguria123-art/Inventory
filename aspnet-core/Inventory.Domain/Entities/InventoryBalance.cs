@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Inventory.Domain.Entities;
@@ -20,6 +21,8 @@ public sealed class InventoryBalance
     [NotMapped]
     public int AvailableQuantity => QuantityOnHand - ReservedQuantity;
 
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
     public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
     public Warehouse Warehouse { get; set; } = null!;
     public Product Product { get; set; } = null!;

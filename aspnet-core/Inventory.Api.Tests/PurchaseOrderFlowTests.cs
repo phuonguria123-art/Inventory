@@ -210,7 +210,11 @@ public sealed class PurchaseOrderFlowTests : IClassFixture<InventoryApiFactory>
             ]
         };
 
-        var receivedOrder = await service.OrderReceived(receiveRequest, userId);
+        var idempotencyKey = Guid.NewGuid().ToString();
+        var receivedOrder = await service.OrderReceived(
+            receiveRequest,
+            idempotencyKey,
+            userId);
 
         Assert.Equal(PurchaseOrderStatus.Received, receivedOrder.Status);
         Assert.NotNull(receivedOrder.ReceivedDate);
@@ -244,10 +248,22 @@ public sealed class PurchaseOrderFlowTests : IClassFixture<InventoryApiFactory>
             Assert.NotNull(transaction.InventoryItemId);
         });
 
-        await Assert.ThrowsAsync<ConflictException>(() =>
-            service.OrderReceived(receiveRequest, userId));
+        var idempotencyRecord = await context.IdempotencyRecords.SingleAsync(record =>
+            record.Key == idempotencyKey &&
+            record.Operation == "purchase-order.receive");
+        Assert.Equal(order.Id, idempotencyRecord.ResourceId);
+        Assert.Equal("Completed", idempotencyRecord.Status);
+
+        var retriedOrder = await service.OrderReceived(
+            receiveRequest,
+            idempotencyKey,
+            userId);
+        Assert.Equal(PurchaseOrderStatus.Received, retriedOrder.Status);
         Assert.Equal(2, await context.InventoryTransactions.CountAsync(transaction =>
             transaction.Reference == order.Code));
+        Assert.Equal(1, await context.IdempotencyRecords.CountAsync(record =>
+            record.Key == idempotencyKey &&
+            record.Operation == "purchase-order.receive"));
     }
 
     private async Task<PurchaseOrderTestData> SeedPurchaseOrderDependenciesAsync()

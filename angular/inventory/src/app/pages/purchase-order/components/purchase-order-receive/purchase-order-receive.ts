@@ -11,6 +11,7 @@ import { PurchaseOrderStatus } from '../../../../core/enum/purchase-order-status
 import { finalize, forkJoin } from 'rxjs';
 import { getApiErrorMessage } from '../../../../core/helpers/api-error.helper';
 import { ReceivePurchaseOrderLotModel } from '../../../../core/models/features-models/purchase-order/receive/receive-purchase-order-lot.model';
+import { IdempotencyKeyService } from '../../../../core/services/idempotency-key.service';
 
 const receiveLotDateValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const manufactureDate = control.get('manufactureDate')?.value as string | null;
@@ -31,6 +32,7 @@ export class PurchaseOrderReceive {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly productService = inject(ProductService);
+  private readonly idempotencyKeyService = inject(IdempotencyKeyService);
 
   readonly currentOrder = signal<PurchaseOrderModel | null>(null);
   readonly products = signal<ProductModel[]>([]);
@@ -114,8 +116,21 @@ export class PurchaseOrderReceive {
     }
     this.setFormToModel();
     this.isSubmitting.set(true);
-    this.purchaseOrderService.received(this.purchaseOrderReceiveModel).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
-      next: () => { this.notification.success('Nhận đơn mua hàng và nhập kho thành công'); this.router.navigate(['/purchase-orders/detail', this.purchaseOrderId]); },
+    const operation = 'purchase-order.receive';
+    const resourceId = this.purchaseOrderId!;
+    const key = this.idempotencyKeyService.getOrCreate(
+      operation,
+      resourceId
+    );
+    this.purchaseOrderService.received(this.purchaseOrderReceiveModel, key).pipe(finalize(() => this.isSubmitting.set(false))).subscribe({
+      next: () => {
+        this.idempotencyKeyService.complete(
+          'purchase-order.receive',
+          this.purchaseOrderId!
+        );
+        this.notification.success('Nhận đơn mua hàng và nhập kho thành công');
+        this.router.navigate(['/purchase-orders/detail', this.purchaseOrderId]);
+      },
       error: err => this.notification.error(getApiErrorMessage(err, 'Không thể nhận đơn mua hàng')),
     });
   }

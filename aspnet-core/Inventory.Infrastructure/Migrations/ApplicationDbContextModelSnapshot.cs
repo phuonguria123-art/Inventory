@@ -22,6 +22,41 @@ namespace Inventory.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Inventory.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key", "Operation")
+                        .IsUnique();
+
+                    b.ToTable("IdempotencyRecords");
+                });
+
             modelBuilder.Entity("Inventory.Domain.Entities.InventoryBalance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -49,6 +84,12 @@ namespace Inventory.Infrastructure.Migrations
 
                     b.Property<int>("ReservedQuantity")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
                         .HasColumnType("nvarchar(max)");
@@ -998,7 +1039,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.Property<DateTime?>("RefreshTokenExpiryTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserName")
+                    b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
@@ -1007,7 +1048,7 @@ namespace Inventory.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("UserName")
+                    b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Users");

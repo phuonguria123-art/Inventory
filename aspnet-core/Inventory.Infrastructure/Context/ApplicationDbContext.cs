@@ -24,6 +24,7 @@ namespace Inventory.Infrastructure.Context
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
         public DbSet<PurchaseOrderDetail> PurchaseOrdersDetails { get; set; }
+        public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -238,6 +239,21 @@ namespace Inventory.Infrastructure.Context
             modelBuilder.Entity<PurchaseOrderDetail>()
                     .Property(detail => detail.UnitPrice)
                     .HasPrecision(18, 2);
+            modelBuilder.Entity<IdempotencyRecord>()
+                .Property(x => x.Key)
+                .HasMaxLength(100);
+            modelBuilder.Entity<IdempotencyRecord>()
+                .Property(x => x.Operation)
+                .HasMaxLength(100);
+            modelBuilder.Entity<IdempotencyRecord>()
+                .Property(x => x.Status)
+                .HasMaxLength(32);
+            modelBuilder.Entity<IdempotencyRecord>()
+                .HasIndex( x => new
+                {
+                    x.Key,
+                    x.Operation
+                }).IsUnique();
 
             modelBuilder.Entity<User>()
                 .HasIndex(user => user.Username)

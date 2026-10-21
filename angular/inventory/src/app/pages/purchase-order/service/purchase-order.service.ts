@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpHeaders, HttpParams, HttpRequest } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { PagedResult } from "../../../core/models/common/paged-result.model";
@@ -69,8 +69,15 @@ export class PurchaseOrderService {
     public getById(purchaseOrderId: string): Observable<PurchaseOrderModel> {
         return this.http.get<PurchaseOrderModel>(this.url(`${this.apiUrl}/${purchaseOrderId}`))
     }
-    public received(receiveModel: ReceivePurchaseOrderModel): Observable<void> {
-        return this.http.put<void>(this.url(`${this.apiUrl}/receive`), receiveModel)
+    public received(receiveModel: ReceivePurchaseOrderModel, idempotencyKey: string): Observable<void> {
+        return this.http.put<void>(this.url(`${this.apiUrl}/receive`),
+            receiveModel,
+            {
+                headers: new HttpHeaders({
+                    'Idempotency-Key': idempotencyKey
+
+                })
+            })
     }
     public cancel(id: string): Observable<void> {
         const params = new HttpParams().set('id', id);

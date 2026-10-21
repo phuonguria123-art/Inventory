@@ -22,7 +22,8 @@ namespace Inventory.Application.PurchaseOrders
         IWarehouseRepository _warehouseRepository,
         ISupplierRepository _supplierRepository,
         IProductRepository _productRepository,
-        IInventoryService _inventoryService
+        IInventoryService _inventoryService,
+       IIdempotencyRepository _idempotencyRepository
         ) : IPurchaseOrderService
     {
         public async Task<PagedResult<PurchaseOrderDto>> GetPageAsync(int pageSize, int pageNumber, PurchaseOrderStatus? status, Guid? supplierId, Guid? warehouseId, DateTime? createDate)
@@ -202,8 +203,11 @@ namespace Inventory.Application.PurchaseOrders
         //Nhận hàng => kiểm đếm => xác nhận nhận hàng => cập nhật số lượng sản phẩm tương ứng
         public async Task<PurchaseOrder> OrderReceived(
             ReceivePurchaseOrderRequestDto request,
+            string idempotencyKey,
             Guid userId)
         {
+            const string operation = "purchase-order.receive";
+
             if (request is null)
                 throw new ValidationException("Thông tin nhận đơn mua là bắt buộc.");
 
@@ -212,6 +216,26 @@ namespace Inventory.Application.PurchaseOrders
 
             if (userId == Guid.Empty)
                 throw new ValidationException("Người nhận hàng không hợp lệ.");
+            if (!Guid.TryParse(idempotencyKey, out _))
+            {
+                throw new ValidationException(
+                    "Idempotency-Key không hợp lệ.");
+            }
+
+            var existingOperation = await _idempotencyRepository.GetAsync(
+                idempotencyKey,
+                operation);
+            if (existingOperation is not null)
+            {
+                if (existingOperation.ResourceId != request.PurchaseOrderId)
+                {
+                    throw new ConflictException(
+                        "Idempotency-Key đã được sử dụng cho một yêu cầu khác.");
+                }
+
+                return await _purchaseOrderRepo.GetWithDetailsAsync(request.PurchaseOrderId)
+                    ?? throw new NotFoundException("Đơn mua không tồn tại.");
+            }
 
             if (request.OrderDetails is null || request.OrderDetails.Count == 0)
                 throw new ValidationException("Phải có ít nhất một dòng nhận hàng.");
@@ -264,7 +288,7 @@ namespace Inventory.Application.PurchaseOrders
             {
                 if (requestDetail.PurchaseOrderDetailId == Guid.Empty)
                     throw new ValidationException("Mã chi tiết đơn mua không hợp lệ.");
-               
+
                 if (!orderDetailsById.TryGetValue(requestDetail.PurchaseOrderDetailId, out var orderDetail))
                 {
                     throw new NotFoundException(
@@ -322,7 +346,16 @@ namespace Inventory.Application.PurchaseOrders
             await _purchaseOrderRepo.ExecuteInTransactionAsync(async () =>
             {
                 await _inventoryService.ReceiveAsync(receiveRequest, userId);
-
+                await _idempotencyRepository.CreateAsync(
+                    new IdempotencyRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        Key = idempotencyKey,
+                        Operation = operation,
+                        ResourceId = order.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        Status = "Completed"
+                    });
                 var receivedAt = DateTime.UtcNow;
                 foreach (var orderDetail in order.OrderDetails)
                 {
@@ -333,6 +366,7 @@ namespace Inventory.Application.PurchaseOrders
                 order.ReceivedDate = receivedAt;
                 order.ReceivedTo = userId.ToString();
                 order.Status = PurchaseOrderStatus.Received;
+
                 await _purchaseOrderRepo.UpdateAsync(order);
             });
 

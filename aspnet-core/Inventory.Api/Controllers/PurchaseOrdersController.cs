@@ -60,13 +60,13 @@ namespace Inventory.Api.Controllers
 
         [Authorize(Policy = PermissionCodes.PurchaseOrderReceive)]
         [HttpPut("receive")]
-        public async Task<IActionResult> ReceivedAsync(ReceivePurchaseOrderRequestDto request)
+        public async Task<IActionResult> ReceivedAsync([FromBody] ReceivePurchaseOrderRequestDto request, [FromHeader(Name = "Idempotency-Key")] string idempotencyKey)
         {
             var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!Guid.TryParse(claimValue, out var userId))
                 return Unauthorized();
-            await _purchaseOrderService.OrderReceived(request, userId);
+            await _purchaseOrderService.OrderReceived(request, idempotencyKey, userId);
             return NoContent();
         }
         //Hủy PO 

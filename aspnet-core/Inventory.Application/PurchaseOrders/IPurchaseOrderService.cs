@@ -18,7 +18,7 @@ namespace Inventory.Application.PurchaseOrders
         Task<PurchaseOrder> CreateAsync(CreatePurchaseOrderDto purchaseOrder);
         Task UpdateAsync(Guid id, UpdatePurchaseOrderDto orderUpdate);
         Task UpdateStatusAsync(Guid id, PurchaseOrderStatus status);
-        Task<PurchaseOrder> OrderReceived(ReceivePurchaseOrderRequestDto request, Guid userId);
+        Task<PurchaseOrder> OrderReceived(ReceivePurchaseOrderRequestDto request,string idempotencyKey, Guid userId);
         Task CancelAsync(Guid purchaseOrderId);
     }
 }
