@@ -1,9 +1,11 @@
 using AutoMapper;
 using Inventory.Api.Authorization;
 using Inventory.Api.ExceptionHandlers;
+using Inventory.Application.Abstraction.Caching;
 using Inventory.Application.Authorization;
 using Inventory.Application.Interfaces;
 using Inventory.Application.Inventory;
+using Inventory.Application.Inventory.Reservation;
 using Inventory.Application.Mappings;
 using Inventory.Application.Products.Services;
 using Inventory.Application.PurchaseOrders;
@@ -14,6 +16,7 @@ using Inventory.Application.Warehouses;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
 using Inventory.Infrastructure.Authentication;
+using Inventory.Infrastructure.Caching;
 using Inventory.Infrastructure.Context;
 using Inventory.Infrastructure.Repositories;
 using Inventory.Infrastructure.Repository;
@@ -88,6 +91,23 @@ namespace Inventory.Api
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
             builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+            builder.Services.AddScoped<ICacheService, DistributedCacheService>();
+            builder.Services
+    .AddOptions<ReservationExpirationOptions>()
+    .Bind(builder.Configuration.GetSection(
+        ReservationExpirationOptions.SectionName))
+    .Validate(
+        options => options.CheckIntervalMinutes > 0,
+        "CheckIntervalMinutes phải lớn hơn 0.")
+    .Validate(
+        options => options.BatchSize > 0,
+        "BatchSize phải lớn hơn 0.")
+    .ValidateOnStart();
+
+            builder.Services.AddScoped<IReservationExpirationService, ReservationExpirationService>();
+            // Ứng dụng khởi động → framework tạo worker và gọi ExecuteAsync.Worker chạy song song với Web API.
+            builder.Services.AddHostedService<
+                ReservationExpirationWorker>();
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             // Cách hiểu chính xác hơn là: Đăng ký UserService để DI cung cấp nó thông qua interface IUserService, với lifetime là Scoped.
@@ -127,6 +147,12 @@ namespace Inventory.Api
                         Array.Empty<string>()
                     }
                 });
+            });
+            //  builder.Services.AddMemoryCache();
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = builder.Configuration["Redis:Configuration"];
+                options.InstanceName = builder.Configuration["Redis:InstanceName"];
             });
 
             var app = builder.Build();

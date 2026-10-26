@@ -24,7 +24,10 @@ namespace Inventory.Domain.Interfaces
             bool sortDescending);
         Task<List<InventoryItem>> GetListItemAsync(Guid warehouseId,Guid productId);
         Task<(List<InventoryTransaction> Items, int TotalCount)> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
-        Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync();
+        Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync(
+               DateTime now,
+               int batchSize,
+               CancellationToken cancellationToken);
         Task<bool> TransactionReferenceExistsAsync(Guid warehouseId, InventoryTransactionType transactionType, string reference);
         Task<InventoryReservation?> GetActiveReservationAsync(Guid inventoryId, string reference);
         Task<List<InventoryBalance>> GetLowStockAsync();
@@ -37,6 +40,6 @@ namespace Inventory.Domain.Interfaces
         Task UpdateInventoryAsync(InventoryBalance inventory);
         Task UpdateReservationAsync(InventoryReservation reservation);
         Task UpdateInventoryItemAsync(InventoryItem inventoryItem);
-        Task ExecuteInTransactionAsync(Func<Task> operation);
+        Task ExecuteInTransactionAsync(Func<Task> operation, CancellationToken cancellationToken = default);
     }
 }

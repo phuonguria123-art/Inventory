@@ -22,12 +22,11 @@ public interface IInventoryService
         bool sortDescending);
     Task<List<InventoryItemDto>> GetLotsById(Guid warehouseId, Guid productId);
     Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
-    Task<List<InventoryDto>> GetLowStockAsync();
-    Task<List<InventoryDto>> GetExcessStockAsync();
+    Task<List<InventoryDto>> GetLowStockAsync(CancellationToken cancellationToken = default);
+    Task<List<InventoryDto>> GetExcessStockAsync(CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> ReceiveAsync(ReceiveInventoryRequestDto request, Guid userId);
     Task<List<InventoryDto>> IssueAsync(IssueInventoryRequestDto request, Guid userId);
     Task<List<InventoryDto>> AdjustAsync(AdjustInventoryRequestDto request, Guid userId);
     Task TransferAsync(TransferInventoryRequestDto request, Guid userId);
     Task<List<InventoryDto>> ReserveAsync(ReserveInventoryRequestDto request, Guid userId);
-    Task ExpireReservationsAsync();
 }

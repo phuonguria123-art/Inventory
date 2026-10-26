@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Inventory.Application.Abstraction.Caching;
 using Inventory.Application.Common.Models;
 using Inventory.Application.Inventory;
 using Inventory.Application.Inventory.Dto.Receive;
@@ -23,7 +24,8 @@ namespace Inventory.Application.PurchaseOrders
         ISupplierRepository _supplierRepository,
         IProductRepository _productRepository,
         IInventoryService _inventoryService,
-       IIdempotencyRepository _idempotencyRepository
+       IIdempotencyRepository _idempotencyRepository,
+       ICacheService _cacheService
         ) : IPurchaseOrderService
     {
         public async Task<PagedResult<PurchaseOrderDto>> GetPageAsync(int pageSize, int pageNumber, PurchaseOrderStatus? status, Guid? supplierId, Guid? warehouseId, DateTime? createDate)
@@ -369,6 +371,9 @@ namespace Inventory.Application.PurchaseOrders
 
                 await _purchaseOrderRepo.UpdateAsync(order);
             });
+
+            await _cacheService.RemoveAsync(CacheKeys.Inventory.LowStock);
+            await _cacheService.RemoveAsync(CacheKeys.Inventory.ExcessStock);
 
             return order;
         }

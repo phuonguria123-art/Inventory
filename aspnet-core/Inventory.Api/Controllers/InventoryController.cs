@@ -54,16 +54,16 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     //hàng sắp hết
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("low-stock")]
-    public async Task<ActionResult<List<InventoryDto>>> GetLowStockAsync()
+    public async Task<ActionResult<List<InventoryDto>>> GetLowStockAsync(CancellationToken cancellationToken)
     {
-        return Ok(await inventoryService.GetLowStockAsync());
+        return Ok(await inventoryService.GetLowStockAsync(cancellationToken));
     }
     //hàng vượt ngưỡng
     [Authorize(Policy = PermissionCodes.InventoryRead)]
     [HttpGet("excess-stock")]
-    public async Task<ActionResult<List<InventoryDto>>> GetExcessStockAsync()
+    public async Task<ActionResult<List<InventoryDto>>> GetExcessStockAsync(CancellationToken cancellationToken)
     {
-        return Ok(await inventoryService.GetExcessStockAsync());
+        return Ok(await inventoryService.GetExcessStockAsync(cancellationToken));
     }
     [Authorize(Policy = PermissionCodes.InventoryReceive)]
     [HttpPost("receive")]

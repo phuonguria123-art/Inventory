@@ -1,14 +1,19 @@
 using AutoMapper;
+using Inventory.Application.Abstraction.Caching;
 using Inventory.Application.Common.Models;
 using Inventory.Application.Inventory.Dto;
 using Inventory.Application.Inventory.Dto.Adjust;
 using Inventory.Application.Inventory.Dto.Issue;
 using Inventory.Application.Inventory.Dto.Receive;
 using Inventory.Application.Inventory.Dto.Transfer;
+using Inventory.Application.Products.DTOs;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Inventory.Application.Inventory;
 
@@ -16,8 +21,8 @@ public sealed class InventoryService(
     IInventoryRepository inventoryRepository,
     IProductRepository productRepository,
     IWarehouseRepository warehouseRepository,
-    IMapper mapper
-
+    IMapper mapper,
+ICacheService cacheService
     ) : IInventoryService
 {
     public async Task<InventoryDto> GetByWarehouseAndProductAsync(Guid warehouseId, Guid productId)
@@ -210,6 +215,7 @@ public sealed class InventoryService(
             }
         });
 
+        await InvalidateInventoryAlertCacheAsync();
     }
     private static InventoryItem CreateTransferredInventoryItem(
     InventoryItem sourceLot,
@@ -361,31 +367,12 @@ public sealed class InventoryService(
             }
 
         });
+        await InvalidateInventoryAlertCacheAsync();
 
         return updatedInventories.Select(MapToDto).ToList();
     }
 
-    //hết hạn giữ hàng
-    public async Task ExpireReservationsAsync()
-    {
-        var expiredReservations = await inventoryRepository.GetExpiredActiveReservationsAsync();
-        if (expiredReservations.Count <= 0)
-        {
-            throw new NotFoundException("Không có sản phẩm nào tới hết hạn giữ hàng");
-        }
-        foreach (var reservation in expiredReservations)
-        {
-            reservation.Status = InventoryReservationStatus.Expired;
-            var inventory = await inventoryRepository.GetByIdAsync(reservation.InventoryId);
-            if (inventory is null)
-            {
-                throw new NotFoundException("Không tìm thấy thông tin tồn kho tương ứng với sản phẩm hết hạn giữ hàng");
-            }
-            inventory.ReservedQuantity -= reservation.Quantity;
-            await inventoryRepository.UpdateReservationAsync(reservation);
-            await inventoryRepository.UpdateInventoryAsync(inventory);
-        }
-    }
+
     //nhập kho
     public async Task<List<InventoryDto>> ReceiveAsync(
         ReceiveInventoryRequestDto request,
@@ -422,6 +409,7 @@ public sealed class InventoryService(
                 updatedInventories.Add(inventory);
             }
         });
+        await InvalidateInventoryAlertCacheAsync();
 
         return updatedInventories.Select(MapToDto).ToList();
     }
@@ -671,6 +659,7 @@ public sealed class InventoryService(
             }
         });
 
+        await InvalidateInventoryAlertCacheAsync();
         return updatedInventories.Select(MapToDto).ToList();
     }
     //kiểm kê
@@ -729,18 +718,51 @@ public sealed class InventoryService(
                 updatedInventories.Add(inventory);
             }
         });
-
+        await InvalidateInventoryAlertCacheAsync();
         return updatedInventories.Select(MapToDto).ToList();
     }
 
-    public async Task<List<InventoryDto>> GetLowStockAsync()
+    public async Task<List<InventoryDto>> GetLowStockAsync(CancellationToken cancellationToken = default)
     {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetLowStockAsync());
+
+        var cachedData = await cacheService.GetAsync<List<InventoryDto>>(CacheKeys.Inventory.LowStock, cancellationToken);
+
+        if (cachedData is not null)
+        {
+            return cachedData;
+        }
+
+        var inventories = await inventoryRepository.GetLowStockAsync();
+        var inventoryDtos = mapper.Map<List<InventoryDto>>(inventories);
+        await cacheService.SetAsync(
+            CacheKeys.Inventory.LowStock,
+            inventoryDtos,
+            CacheTtl.Inventory,
+            cancellationToken
+          );
+
+        return inventoryDtos;
     }
 
-    public async Task<List<InventoryDto>> GetExcessStockAsync()
+    public async Task<List<InventoryDto>> GetExcessStockAsync(CancellationToken cancellationToken = default)
     {
-        return mapper.Map<List<InventoryDto>>(await inventoryRepository.GetExcessStockAsync());
+        var cachedData = await cacheService.GetAsync<List<InventoryDto>>(CacheKeys.Inventory.ExcessStock, cancellationToken);
+        if (cachedData is not null)
+        {
+            return cachedData;
+        }
+
+        var inventories = await inventoryRepository.GetExcessStockAsync();
+        var inventoryDtos = mapper.Map<List<InventoryDto>>(inventories);
+
+        await cacheService.SetAsync(
+            CacheKeys.Inventory.ExcessStock,
+            inventoryDtos,
+                       CacheTtl.Inventory,
+                       cancellationToken
+              );
+
+        return inventoryDtos;
     }
     private async Task ValidateIssueRequest(IssueInventoryRequestDto request,
             Guid userId)
@@ -884,4 +906,15 @@ public sealed class InventoryService(
         AvailableQuantity = inventory.AvailableQuantity,
         LastUpdatedAt = inventory.LastUpdatedAt
     };
+    private async Task InvalidateInventoryAlertCacheAsync(
+    CancellationToken cancellationToken = default)
+    {
+        await cacheService.RemoveAsync(
+            CacheKeys.Inventory.LowStock,
+            cancellationToken);
+
+        await cacheService.RemoveAsync(
+            CacheKeys.Inventory.ExcessStock,
+            cancellationToken);
+    }
 }

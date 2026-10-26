@@ -109,7 +109,7 @@ namespace Inventory.Infrastructure.Repositories
             return await _context.InventoryBalances.FirstOrDefaultAsync(x => x.Id == inventoryId);
         }
 
-        public async Task<List<InventoryItem>> GetListItemAsync( Guid warehouseId,
+        public async Task<List<InventoryItem>> GetListItemAsync(Guid warehouseId,
        Guid productId)
         {
             return await _context.InventoryItems.Where(x => x.Inventory.ProductId == productId && x.Inventory.WarehouseId == warehouseId).OrderBy(x => x.ExpiryDate).ToListAsync();
@@ -141,14 +141,22 @@ namespace Inventory.Infrastructure.Repositories
                 reservation.Reference == reference &&
                 reservation.Status == InventoryReservationStatus.Active);
         }
-        public async Task<List<InventoryReservation>> GetExpiredActiveReservationsAsync()
+
+        public async Task<List<InventoryReservation>>
+    GetExpiredActiveReservationsAsync(
+        DateTime now,
+        int batchSize,
+        CancellationToken cancellationToken)
         {
             return await _context.InventoryReservations
-    .Where(reservation =>
-        reservation.Status == InventoryReservationStatus.Active &&
-        reservation.ExpiresAt.HasValue &&
-        reservation.ExpiresAt.Value <= DateTime.UtcNow)
-    .ToListAsync();
+                .Include(x => x.Inventory)
+                .Where(x =>
+                    x.Status == InventoryReservationStatus.Active &&
+                    x.ExpiresAt.HasValue &&
+                    x.ExpiresAt <= now)
+                .OrderBy(x => x.ExpiresAt)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken);
         }
         public async Task<(List<InventoryTransaction> Items, int TotalCount)> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference)
         {
@@ -195,26 +203,30 @@ namespace Inventory.Infrastructure.Repositories
                 .Take(20)
                 .ToListAsync();
         }
-        public async Task ExecuteInTransactionAsync(Func<Task> operation)
+        public async Task ExecuteInTransactionAsync(
+      Func<Task> operation,
+      CancellationToken cancellationToken = default)
         {
             if (!_context.Database.IsRelational() ||
                 _context.Database.CurrentTransaction is not null)
             {
                 await operation();
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(cancellationToken);
                 return;
             }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(cancellationToken);
+
             try
             {
                 await operation();
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(CancellationToken.None);
                 throw;
             }
         }

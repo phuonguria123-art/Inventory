@@ -44,25 +44,29 @@ namespace Inventory.Application.Mappings
                         source.RolePermissions.Select(rolePermission => rolePermission.Permission)));
 
             CreateMap<InventoryBalance, InventoryDto>()
-                .ForMember(destination => destination.WarehouseCode,
-                    options => options.MapFrom(source => source.Warehouse.Code))
-                .ForMember(destination => destination.WarehouseName,
-                    options => options.MapFrom(source => source.Warehouse.Name))
-                .ForMember(destination => destination.ProductCode,
-                    options => options.MapFrom(source => source.Product.Code))
-                .ForMember(destination => destination.ProductName,
-                    options => options.MapFrom(source => source.Product.Name));
+.ForMember(
+  dest => dest.WarehouseId,
+  opt => opt.MapFrom(src => src.Warehouse.Id))
+.ForMember(
+  dest => dest.ProductId,
+  opt => opt.MapFrom(src => src.Product.Id))
+.ForMember(
+  dest => dest.WarehouseCode,
+  opt => opt.MapFrom(src => src.Warehouse.Code))
+.ForMember(
+  dest => dest.WarehouseName,
+  opt => opt.MapFrom(src => src.Warehouse.Name))
+.ForMember(
+  dest => dest.ProductCode,
+  opt => opt.MapFrom(src => src.Product.Code))
+.ForMember(
+  dest => dest.ProductName,
+  opt => opt.MapFrom(src => src.Product.Name));
             CreateMap<InventoryTransaction, InventoryTransactionDto>();
             CreateMap<InventoryItem, InventoryItemDto>();
             CreateMap<PurchaseOrder, PurchaseOrderDto>().ReverseMap();
             CreateMap<PurchaseOrderDetail, PurchaseOrderDetailDto>().ReverseMap();
-            //  CreateMap<Product, ProductDto>()
-            //.ForMember(
-            //    dest => dest.ProductName,
-            //    opt => opt.MapFrom(src => src.Name)
-            //);
 
-            //  CreateMap<ProductDto, Product>();
         }
     }
 }
