@@ -11,7 +11,9 @@ using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
+using Inventory.Domain.Models;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -310,7 +312,7 @@ ICacheService cacheService
             throw new ValidationException("Thời hạn giữ hàng phải lớn hơn thời điểm hiện tại.");
 
     }
-    //giữ hàng/hủy hàng
+
     public async Task<List<InventoryDto>> ReserveAsync(ReserveInventoryRequestDto request, Guid userId)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -505,7 +507,7 @@ ICacheService cacheService
             throw new ValidationException("Kho nhập là bắt buộc.");
         if (userId == Guid.Empty)
             throw new ValidationException("Người thực hiện phiếu nhập không hợp lệ.");
-        if (request.PurchaseOrderId == Guid.Empty)
+        if (request.PurchaseOrderId.HasValue && request.PurchaseOrderId == Guid.Empty)
             throw new ValidationException("Mã đơn mua không hợp lệ.");
         if (request.Products is null || request.Products.Count == 0)
             throw new ValidationException("Phiếu nhập phải có ít nhất một sản phẩm.");
@@ -916,5 +918,39 @@ ICacheService cacheService
         await cacheService.RemoveAsync(
             CacheKeys.Inventory.ExcessStock,
             cancellationToken);
+    }
+    public async Task<InventoryMovementSummaryDto> GetMovementByMonthById(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        if ( productId == Guid.Empty)
+            throw new ValidationException("sản phẩm là bắt buộc.");
+        if (startDate.Date > endDate.Date)
+        {
+            throw new ValidationException(
+                "Ngày bắt đầu không được sau ngày kết thúc.");
+        }
+        if (!await productRepository.ExistByIdAsync(productId))
+        {
+            throw new NotFoundException("Sản phẩm không tồn tại.");
+        }
+        var inventories = await inventoryRepository.GetMovementSummaryAsync(
+            productId,
+            startDate,
+            endDate,
+            cancellationToken);
+      
+        return new InventoryMovementSummaryDto
+        {
+            ProductId = productId,
+            FromDate = startDate,
+            ToDate = endDate,
+            Items = inventories.Select(item => new InventoryMovementByMonthDto
+            {
+                Year = item.Year,
+                Month = item.Month,
+                TotalStockIn = item.TotalStockIn,
+                TotalStockOut = item.TotalStockOut
+            }).ToList()
+        };
+
     }
 }

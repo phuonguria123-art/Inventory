@@ -5,6 +5,7 @@ using Inventory.Application.Inventory.Dto.Receive;
 using Inventory.Application.Inventory.Dto.Transfer;
 using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
+using Inventory.Domain.Models;
 
 namespace Inventory.Application.Inventory;
 
@@ -22,6 +23,7 @@ public interface IInventoryService
         bool sortDescending);
     Task<List<InventoryItemDto>> GetLotsById(Guid warehouseId, Guid productId);
     Task<PagedResult<InventoryTransactionDto>> GetTransactionsAsync(int pageSize, int pageNumber, Guid? warehouseId, Guid? productId, InventoryTransactionType? transactionType, Guid? createdByUserId, string? reference);
+    Task<InventoryMovementSummaryDto> GetMovementByMonthById(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> GetLowStockAsync(CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> GetExcessStockAsync(CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> ReceiveAsync(ReceiveInventoryRequestDto request, Guid userId);

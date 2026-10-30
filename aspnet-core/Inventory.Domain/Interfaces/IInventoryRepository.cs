@@ -1,5 +1,6 @@
 ﻿using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
+using Inventory.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,5 +42,6 @@ namespace Inventory.Domain.Interfaces
         Task UpdateReservationAsync(InventoryReservation reservation);
         Task UpdateInventoryItemAsync(InventoryItem inventoryItem);
         Task ExecuteInTransactionAsync(Func<Task> operation, CancellationToken cancellationToken = default);
+        Task<List<InventoryMovementMonthlyResult>> GetMovementSummaryAsync(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     }
 }

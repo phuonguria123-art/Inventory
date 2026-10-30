@@ -19,6 +19,7 @@ import { Reserve } from './inventory/component/reserve/reserve';
 import { PurchaseOrder } from './purchase-order/purchase-order';
 import { PurchaseOrderForm } from './purchase-order/components/purchase-order-form/purchase-order-form';
 import { PurchaseOrderReceive } from './purchase-order/components/purchase-order-receive/purchase-order-receive';
+import { InventoryMovementReport } from './inventory/inventory-movement-report/inventory-movement-report';
 
 const routes: Routes = [
   {
@@ -113,6 +114,12 @@ const routes: Routes = [
   {
     path: "transactions",
     component: InventoryTransaction,
+    canActivate: [PermissionGuard],
+    data: { requiredPolicy: 'inventory.read' }
+  },
+  {
+    path: "inventory/movement-report",
+    component: InventoryMovementReport,
     canActivate: [PermissionGuard],
     data: { requiredPolicy: 'inventory.read' }
   },

@@ -121,8 +121,16 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     {
         return Ok(await inventoryService.GetTransactionsAsync(pageSize, pageNumber, warehouseId, productId, transactionType, createdByUserId, reference));
     }
+    [Authorize(Policy = PermissionCodes.InventoryRead)]
+    [HttpGet("movement-by-month-report")]
+    public async Task<IActionResult> GetMovementByMonthReportAsync(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken )
+    {
+        return Ok(await inventoryService.GetMovementByMonthById(productId, startDate, endDate, cancellationToken));
+    }
+
     private bool TryGetCurrentUserId(out Guid userId)
     {
         return Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
     }
+   
 }

@@ -12,6 +12,7 @@ import { TransferInventoryModel } from "../../../core/models/features-models/inv
 import { InventoryItemModel } from "../../../core/models/features-models/inventory-item/inventory-item.model";
 import { AdjustInventoryModel } from "../../../core/models/features-models/inventory/adjust/adjust-inventory.model";
 import { ReservationInventoryModel } from "../../../core/models/features-models/inventory/reservation/reservation.model";
+import { InventoryMovementSummaryModel } from "../../../core/models/features-models/inventory/inventory-movement-summary.model";
 
 @Injectable({
     providedIn: "root",
@@ -139,6 +140,21 @@ export class InventoryService {
     getExcessStock(): Observable<InventoryModel[]> {
         return this.http.get<InventoryModel[]>(
             this.url(`${this.apiUrl}/excess-stock`)
+        );
+    }
+    getMovementByMonthReport(
+        productId: string,
+        startDate: string,
+        endDate: string
+    ): Observable<InventoryMovementSummaryModel> {
+        const params = new HttpParams()
+            .set('productId', productId)
+            .set('startDate', startDate)
+            .set('endDate', endDate);
+
+        return this.http.get<InventoryMovementSummaryModel>(
+            this.url(`${this.apiUrl}/movement-by-month-report`),
+            { params }
         );
     }
     private url(s: string): string {

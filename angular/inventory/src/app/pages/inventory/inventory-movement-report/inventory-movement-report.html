@@ -1,0 +1,98 @@
+<section class="report-page">
+  <header class="page-header">
+    <div>
+      <span>Báo cáo kho</span>
+      <h2>Biến động nhập/xuất theo thời gian</h2>
+      <p>Tổng hợp giao dịch nhập và xuất của một sản phẩm theo từng tháng.</p>
+    </div>
+    <a routerLink="/inventory" class="back-link">← Quay lại tồn kho</a>
+  </header>
+
+  <form class="filter-card" [formGroup]="form" (ngSubmit)="loadReport()">
+    <label>
+      <span>Sản phẩm</span>
+      <select formControlName="productId">
+        <option value="">{{ isLoadingProducts() ? 'Đang tải sản phẩm...' : 'Chọn sản phẩm' }}</option>
+        @for (product of products(); track product.id) {
+          <option [value]="product.id">{{ product.code }} - {{ product.name }}</option>
+        }
+      </select>
+      @if (form.controls.productId.touched && form.controls.productId.invalid) {
+        <small class="field-error">Vui lòng chọn sản phẩm.</small>
+      }
+    </label>
+
+    <label>
+      <span>Từ ngày</span>
+      <input type="date" formControlName="startDate" />
+    </label>
+
+    <label>
+      <span>Đến ngày</span>
+      <input type="date" formControlName="endDate" />
+    </label>
+
+    <button type="submit" [disabled]="isLoadingReport() || isLoadingProducts()">
+      {{ isLoadingReport() ? 'Đang tổng hợp...' : 'Xem báo cáo' }}
+    </button>
+  </form>
+
+  @if (report(); as summary) {
+    <section class="report-card">
+      <div class="report-heading">
+        <div>
+          <h3>Kết quả theo tháng</h3>
+          <p>{{ summary.items.length }} tháng có phát sinh giao dịch</p>
+        </div>
+        <div class="legend">
+          <span><i class="receipt"></i>Nhập kho</span>
+          <span><i class="issue"></i>Xuất kho</span>
+        </div>
+      </div>
+
+      @if (summary.items.length === 0) {
+        <div class="empty-state">
+          <strong>Không có giao dịch nhập/xuất</strong>
+          <span>Hãy chọn sản phẩm hoặc khoảng thời gian khác.</span>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Tổng nhập</th>
+                <th>Tổng xuất</th>
+                <th>So sánh biến động</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of summary.items; track item.year + '-' + item.month) {
+                <tr>
+                  <td><strong>Tháng {{ item.month }}/{{ item.year }}</strong></td>
+                  <td><span class="value value--in">+{{ item.totalStockIn }}</span></td>
+                  <td><span class="value value--out">-{{ item.totalStockOut }}</span></td>
+                  <td>
+                    <div class="bar-row" title="Nhập: {{ item.totalStockIn }}">
+                      <span>Nhập</span>
+                      <div class="bar-track"><i class="bar bar--in" [style.width.%]="barWidth(item.totalStockIn)"></i></div>
+                    </div>
+                    <div class="bar-row" title="Xuất: {{ item.totalStockOut }}">
+                      <span>Xuất</span>
+                      <div class="bar-track"><i class="bar bar--out" [style.width.%]="barWidth(item.totalStockOut)"></i></div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  } @else {
+    <div class="intro-card">
+      <strong>Chọn điều kiện báo cáo</strong>
+      <span>Kết quả chỉ tính giao dịch nhập kho và xuất kho; chuyển kho nội bộ không được cộng vào báo cáo toàn hệ thống.</span>
+    </div>
+  }
+</section>

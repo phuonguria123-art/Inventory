@@ -1,6 +1,7 @@
 ﻿using Inventory.Domain.Entities;
 using Inventory.Domain.Enums;
 using Inventory.Domain.Interfaces;
+using Inventory.Domain.Models;
 using Inventory.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -252,6 +253,30 @@ namespace Inventory.Infrastructure.Repositories
                 .FirstOrDefaultAsync(item =>
                     item.InventoryId == inventoryId &&
                     item.BatchNumber == batchNumber);
+        }
+        public async Task<List<InventoryMovementMonthlyResult>> GetMovementSummaryAsync(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var fromDate = startDate.Date;
+            var toDateExclusive = endDate.Date.AddDays(1);
+
+            var query = _context.InventoryTransactions
+                .AsNoTracking()
+                .Where(x => x.ProductId == productId &&
+                            x.TransactionDate >= fromDate &&
+                            x.TransactionDate < toDateExclusive)
+                .Where(x =>
+
+                    x.TransactionType == InventoryTransactionType.Issue ||
+                    x.TransactionType == InventoryTransactionType.Receipt);
+
+            return await query.GroupBy(x =>new {x.TransactionDate.Year, x.TransactionDate.Month}).Select(group => new InventoryMovementMonthlyResult
+            {
+                Month = group.Key.Month,
+                Year = group.Key.Year,
+                TotalStockIn = group.Where(x => x.TransactionType == InventoryTransactionType.Receipt).Sum(x =>x.Quantity),
+                TotalStockOut = group.Where(x => x.TransactionType == InventoryTransactionType.Issue).Sum(x => x.Quantity)
+            }).OrderBy(x => x.Year).ThenBy(x =>  x.Month)
+                .ToListAsync(cancellationToken);
         }
     }
 }
