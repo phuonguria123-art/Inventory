@@ -102,6 +102,24 @@ ICacheService cacheService
             PageSize = pageSize,
         };
     }
+    public async Task UpdateStockLevelsAsync(Guid inventoryId, UpdateStockLevelsRequest request)
+    {
+        if (inventoryId == Guid.Empty) throw new ValidationException("Mã tồn kho là bắt buộc");
+        if (request.MinStock < 0)
+            throw new ValidationException("Mức tồn tối thiểu không được âm.");
+
+        if (request.MaxStock <= request.MinStock)
+            throw new ValidationException(
+                "Mức tồn tối đa phải lớn hơn mức tồn tối thiểu.");
+        var inventory = await inventoryRepository.GetByIdAsync(inventoryId);
+        if (inventory is null)
+            throw new NotFoundException("Không tìm thấy tồn kho cần cập nhật");
+        inventory.MaxStock = request.MaxStock;
+        inventory.MinStock = request.MinStock;
+        await inventoryRepository.UpdateInventoryAsync(inventory);
+        await cacheService.RemoveAsync(CacheKeys.Inventory.LowStock);
+        await cacheService.RemoveAsync(CacheKeys.Inventory.ExcessStock);
+    }
     public async Task TransferAsync(TransferInventoryRequestDto request, Guid userId)
     {
         if (request is null)
@@ -921,7 +939,7 @@ ICacheService cacheService
     }
     public async Task<InventoryMovementSummaryDto> GetMovementByMonthById(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        if ( productId == Guid.Empty)
+        if (productId == Guid.Empty)
             throw new ValidationException("sản phẩm là bắt buộc.");
         if (startDate.Date > endDate.Date)
         {
@@ -937,7 +955,7 @@ ICacheService cacheService
             startDate,
             endDate,
             cancellationToken);
-      
+
         return new InventoryMovementSummaryDto
         {
             ProductId = productId,

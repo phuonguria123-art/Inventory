@@ -65,7 +65,14 @@ public sealed class InventoryController(IInventoryService inventoryService) : Co
     {
         return Ok(await inventoryService.GetExcessStockAsync(cancellationToken));
     }
-    [Authorize(Policy = PermissionCodes.InventoryReceive)]
+    [Authorize(Policy = PermissionCodes.InventoryAdjust)]
+    [HttpPut("stock-levels/{inventoryId:guid}")]
+    public async Task<IActionResult> UpdateStockLevelsAsync(Guid inventoryId,UpdateStockLevelsRequest request)
+    {
+        await inventoryService.UpdateStockLevelsAsync(inventoryId, request);
+        return NoContent();
+    }
+    [Authorize(Policy =PermissionCodes.InventoryReceive)]
     [HttpPost("receive")]
     public async Task<ActionResult<List<InventoryDto>>> ReceiveAsync(ReceiveInventoryRequestDto request)
     {

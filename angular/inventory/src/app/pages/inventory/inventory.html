@@ -27,6 +27,7 @@
             <th>Khả dụng</th>
             <th>Min / Max</th>
             <th>Cập nhật</th>
+            @if (canConfigureStockLevels()) { <th class="actions">Thao tác</th> }
           </tr>
         </thead>
         <tbody>
@@ -35,13 +36,22 @@
             <td><strong>{{ item.productName }}</strong><small>{{ item.productCode }}</small></td>
             <td>{{ item.quantityOnHand }}</td>
             <td>{{ item.reservedQuantity }}</td>
-            <td><span class="quantity" [class.quantity--low]="item.availableQuantity <= item.minStock">{{
+            <td><span class="quantity" [class.quantity--low]="item.minStock !== null && item.availableQuantity <= item.minStock">{{
                 item.availableQuantity }}</span></td>
-            <td>{{ item.minStock }} / {{ item.maxStock }}</td>
+            <td>
+              @if (item.minStock !== null && item.maxStock !== null) {
+                {{ item.minStock }} / {{ item.maxStock }}
+              } @else {
+                <span class="not-configured">Chưa thiết lập</span>
+              }
+            </td>
             <td>{{ item.lastUpdate }}</td>
+            @if (canConfigureStockLevels()) {
+              <td class="actions"><button type="button" (click)="openStockLevelsForm(item)">Thiết lập</button></td>
+            }
           </tr> }
           @empty { <tr>
-            <td colspan="7" class="empty">Chưa có dữ liệu tồn kho.</td>
+            <td [attr.colspan]="canConfigureStockLevels() ? 8 : 7" class="empty">Chưa có dữ liệu tồn kho.</td>
           </tr> }
         </tbody>
       </table>
@@ -54,3 +64,47 @@
     }
   </div>
 </section>
+
+@if (selectedInventory(); as inventory) {
+  <div class="modal-backdrop" (click)="closeStockLevelsForm()">
+    <section class="stock-level-modal" role="dialog" aria-modal="true" aria-labelledby="stock-level-title"
+      (click)="$event.stopPropagation()">
+      <header>
+        <div>
+          <span>Ngưỡng cảnh báo</span>
+          <h3 id="stock-level-title">Thiết lập mức tồn</h3>
+          <p>{{ inventory.productName }} tại {{ inventory.warehouseName }}</p>
+        </div>
+        <button type="button" class="close-button" aria-label="Đóng" (click)="closeStockLevelsForm()">×</button>
+      </header>
+
+      <form [formGroup]="stockLevelsForm" (ngSubmit)="saveStockLevels()">
+        <label>
+          <span>Mức tồn tối thiểu</span>
+          <input type="number" min="0" step="1" formControlName="minStock" placeholder="Ví dụ: 10" />
+          @if (stockLevelsForm.controls.minStock.touched && stockLevelsForm.controls.minStock.invalid) {
+            <small>Mức tồn tối thiểu phải là số nguyên không âm.</small>
+          }
+        </label>
+
+        <label>
+          <span>Mức tồn tối đa</span>
+          <input type="number" min="1" step="1" formControlName="maxStock" placeholder="Ví dụ: 100" />
+          @if (stockLevelsForm.controls.maxStock.touched && stockLevelsForm.controls.maxStock.hasError('required')) {
+            <small>Vui lòng nhập mức tồn tối đa.</small>
+          } @else if (stockLevelsForm.controls.maxStock.touched && stockLevelsForm.controls.maxStock.invalid) {
+            <small>Mức tồn tối đa phải lớn hơn mức tồn tối thiểu.</small>
+          }
+        </label>
+
+        <p class="form-hint">Cảnh báo tồn thấp dùng số lượng khả dụng; cảnh báo vượt tồn dùng tồn thực tế.</p>
+        <footer>
+          <button type="button" class="secondary-button" (click)="closeStockLevelsForm()">Hủy</button>
+          <button type="submit" class="save-button" [disabled]="isSavingStockLevels()">
+            {{ isSavingStockLevels() ? 'Đang lưu...' : 'Lưu mức tồn' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}

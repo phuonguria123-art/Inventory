@@ -70,10 +70,10 @@ namespace Inventory.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("LastUpdate");
 
-                    b.Property<int>("MaxStock")
+                    b.Property<int?>("MaxStock")
                         .HasColumnType("int");
 
-                    b.Property<int>("MinStock")
+                    b.Property<int?>("MinStock")
                         .HasColumnType("int");
 
                     b.Property<Guid>("ProductId")

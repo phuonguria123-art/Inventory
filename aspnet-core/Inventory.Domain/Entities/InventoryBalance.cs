@@ -11,8 +11,8 @@ public sealed class InventoryBalance
     public Guid Id { get; set; }
     public Guid WarehouseId { get; set; }
     public Guid ProductId { get; set; }
-    public int MinStock { get; set; }
-    public int MaxStock { get; set; }
+    public int? MinStock { get; set; }
+    public int? MaxStock { get; set; }
     public string? Description { get; set; }
     public string? Status { get; set; }
     public int QuantityOnHand { get; set; }

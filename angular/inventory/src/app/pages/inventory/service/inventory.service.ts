@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { PagedResult } from "../../../core/models/common/paged-result.model";
-import { InventoryModel } from "../../../core/models/features-models/inventory/inventory.model";
+import { InventoryModel, UpdateStockLevelsModel } from "../../../core/models/features-models/inventory/inventory.model";
 import { environment } from "../../../../environments/environment";
 import { InventoryTransactionType } from "../../../core/enum/inventory-transaction-type.enum";
 import { InventoryTransactionModel } from "../../../core/models/features-models/inventory-transaction/inventory-transaction.model";
@@ -140,6 +140,12 @@ export class InventoryService {
     getExcessStock(): Observable<InventoryModel[]> {
         return this.http.get<InventoryModel[]>(
             this.url(`${this.apiUrl}/excess-stock`)
+        );
+    }
+    updateStockLevels(inventoryId: string, request: UpdateStockLevelsModel): Observable<void> {
+        return this.http.put<void>(
+            this.url(`${this.apiUrl}/stock-levels/${inventoryId}`),
+            request
         );
     }
     getMovementByMonthReport(

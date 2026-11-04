@@ -19,9 +19,9 @@ export class Dashboard {
   readonly isLoading = signal(false);
   readonly totalWarnings = computed(() => this.lowStockItems().length + this.excessStockItems().length);
   readonly lowStockShortage = computed(() => this.lowStockItems().reduce(
-    (total, item) => total + Math.max(item.minStock - item.availableQuantity, 0), 0));
+    (total, item) => total + Math.max((item.minStock ?? 0) - item.availableQuantity, 0), 0));
   readonly excessQuantity = computed(() => this.excessStockItems().reduce(
-    (total, item) => total + Math.max(item.availableQuantity - item.maxStock, 0), 0));
+    (total, item) => total + Math.max(item.quantityOnHand - (item.maxStock ?? item.quantityOnHand), 0), 0));
 
   ngOnInit(): void {
     this.loadStockWarnings();

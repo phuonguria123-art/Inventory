@@ -26,6 +26,7 @@ public interface IInventoryService
     Task<InventoryMovementSummaryDto> GetMovementByMonthById(Guid productId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> GetLowStockAsync(CancellationToken cancellationToken = default);
     Task<List<InventoryDto>> GetExcessStockAsync(CancellationToken cancellationToken = default);
+    Task UpdateStockLevelsAsync(Guid inventoryId, UpdateStockLevelsRequest request);
     Task<List<InventoryDto>> ReceiveAsync(ReceiveInventoryRequestDto request, Guid userId);
     Task<List<InventoryDto>> IssueAsync(IssueInventoryRequestDto request, Guid userId);
     Task<List<InventoryDto>> AdjustAsync(AdjustInventoryRequestDto request, Guid userId);

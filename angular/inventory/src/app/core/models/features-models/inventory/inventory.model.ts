@@ -2,8 +2,8 @@ export interface InventoryModel {
     id: string;
     warehouseId: string;
     productId: string;
-    minStock: number;
-    maxStock: number;
+    minStock: number | null;
+    maxStock: number | null;
     quantityOnHand: number;
     reservedQuantity: number;
     availableQuantity: number;
@@ -12,4 +12,9 @@ export interface InventoryModel {
     warehouseName: string;
     productCode: string;
     productName: string;
+}
+
+export interface UpdateStockLevelsModel {
+    minStock: number;
+    maxStock: number;
 }

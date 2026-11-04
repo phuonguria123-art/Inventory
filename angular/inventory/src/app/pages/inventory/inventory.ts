@@ -4,9 +4,11 @@ import { InventoryModel } from '../../core/models/features-models/inventory/inve
 import { NotificationService } from '../../core/services/notification.service';
 import { InventoryService } from './service/inventory.service';
 import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { PermissionService } from '../../core/services/permission.service';
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, ReactiveFormsModule],
   selector: 'app-inventory',
   styleUrl: './inventory.scss',
   templateUrl: './inventory.html',
@@ -14,6 +16,7 @@ import { getApiErrorMessage } from '../../core/helpers/api-error.helper';
 export class Inventory {
   private readonly inventoryService = inject(InventoryService);
   private readonly notification = inject(NotificationService);
+  private readonly permissionService = inject(PermissionService);
 
   readonly inventories = signal<InventoryModel[]>([]);
   readonly pageNumber = signal(1);
@@ -21,6 +24,17 @@ export class Inventory {
   readonly totalCount = signal(0);
   readonly totalPages = signal(0);
   readonly isLoading = signal(false);
+  readonly isSavingStockLevels = signal(false);
+  readonly selectedInventory = signal<InventoryModel | null>(null);
+
+  readonly stockLevelsForm = new FormGroup({
+    minStock: new FormControl<number | null>(null, {
+      validators: [Validators.required, Validators.min(0)],
+    }),
+    maxStock: new FormControl<number | null>(null, {
+      validators: [Validators.required, Validators.min(1)],
+    }),
+  });
 
   warehouseId?: string;
   productId?: string;
@@ -56,5 +70,52 @@ export class Inventory {
     if (page < 1 || page > this.totalPages() || page === this.pageNumber()) return;
     this.pageNumber.set(page);
     this.getListInventory();
+  }
+
+  canConfigureStockLevels(): boolean {
+    return this.permissionService.getGrantedPolicy('inventory.adjust');
+  }
+
+  openStockLevelsForm(inventory: InventoryModel): void {
+    this.selectedInventory.set(inventory);
+    this.stockLevelsForm.reset({
+      minStock: inventory.minStock,
+      maxStock: inventory.maxStock,
+    });
+  }
+
+  closeStockLevelsForm(): void {
+    if (this.isSavingStockLevels()) return;
+    this.selectedInventory.set(null);
+    this.stockLevelsForm.reset();
+  }
+
+  saveStockLevels(): void {
+    const inventory = this.selectedInventory();
+    if (!inventory) return;
+
+    this.stockLevelsForm.markAllAsTouched();
+    if (this.stockLevelsForm.invalid) return;
+
+    const { minStock, maxStock } = this.stockLevelsForm.getRawValue();
+    if (minStock === null || maxStock === null) return;
+    if (maxStock <= minStock) {
+      this.stockLevelsForm.controls.maxStock.setErrors({ notGreaterThanMin: true });
+      return;
+    }
+
+    this.isSavingStockLevels.set(true);
+    this.inventoryService.updateStockLevels(inventory.id, { minStock, maxStock }).subscribe({
+      next: () => {
+        this.isSavingStockLevels.set(false);
+        this.selectedInventory.set(null);
+        this.notification.success('Đã cập nhật mức tồn tối thiểu và tối đa.');
+        this.getListInventory();
+      },
+      error: (err) => {
+        this.isSavingStockLevels.set(false);
+        this.notification.error(getApiErrorMessage(err, 'Không thể cập nhật mức tồn kho.'));
+      },
+    });
   }
 }
