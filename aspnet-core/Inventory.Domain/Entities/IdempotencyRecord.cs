@@ -11,7 +11,7 @@ namespace Inventory.Domain.Entities
         public Guid Id { get; set; }
 
         public required string Key { get; set; }
-
+        //loại thao tác
         public required string Operation { get; set; }
 
         public Guid ResourceId { get; set; }

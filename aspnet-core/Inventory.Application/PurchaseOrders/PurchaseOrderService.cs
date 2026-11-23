@@ -208,8 +208,9 @@ namespace Inventory.Application.PurchaseOrders
             string idempotencyKey,
             Guid userId)
         {
+            //loại thao tác
             const string operation = "purchase-order.receive";
-
+            //validate
             if (request is null)
                 throw new ValidationException("Thông tin nhận đơn mua là bắt buộc.");
 
@@ -223,7 +224,7 @@ namespace Inventory.Application.PurchaseOrders
                 throw new ValidationException(
                     "Idempotency-Key không hợp lệ.");
             }
-
+            //kiểm tra giao dịch có đang được thực hiện không bằng indempotency với key và loại giao dịch => nếu đã có thì trả về response tương ứng
             var existingOperation = await _idempotencyRepository.GetAsync(
                 idempotencyKey,
                 operation);
@@ -245,7 +246,7 @@ namespace Inventory.Application.PurchaseOrders
             var order = await _purchaseOrderRepo.GetWithDetailsAsync(request.PurchaseOrderId);
             if (order is null)
                 throw new NotFoundException("Đơn mua không tồn tại.");
-
+            //chỉ nhận đơn hàng đúng trạng thái
             if (order.Status is not PurchaseOrderStatus.Sent
                 and not PurchaseOrderStatus.Confirmed
                 and not PurchaseOrderStatus.Shipping)
@@ -319,7 +320,7 @@ namespace Inventory.Application.PurchaseOrders
                         $"Số lượng nhận của sản phẩm {orderDetail.ProductId} phải bằng số lượng đặt " +
                         $"({orderDetail.OrderedQuantity}).");
                 }
-
+                //số lượng sản phẩm nhận thực tế
                 receivedQuantities[orderDetail.Id] = (int)actualReceivedQuantity;
                 receiveProducts.Add(new ReceiveProductDto
                 {
@@ -344,7 +345,7 @@ namespace Inventory.Application.PurchaseOrders
                 Notes = $"Nhận hàng từ đơn mua {order.Code}",
                 Products = receiveProducts
             };
-
+            //transaction chứa 1 nhóm các hành động thưc hiện cập nhật cùng nhau => nhập kho, tạo idempotency, nhận PO
             await _purchaseOrderRepo.ExecuteInTransactionAsync(async () =>
             {
                 await _inventoryService.ReceiveAsync(receiveRequest, userId);

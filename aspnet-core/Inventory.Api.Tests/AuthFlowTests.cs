@@ -21,7 +21,7 @@ public sealed class AuthFlowTests : IClassFixture<InventoryApiFactory>
         var suffix = Guid.NewGuid().ToString("N");
         var username = $"staff-{suffix}";
         var password = "StrongPassword!123";
-
+        //??ng ký 
         var registerResponse = await _client.PostAsJsonAsync("/api/auth/register", new
         {
             Email = $"{suffix}@example.com",
@@ -29,14 +29,14 @@ public sealed class AuthFlowTests : IClassFixture<InventoryApiFactory>
             Password = password
         });
         Assert.Equal(HttpStatusCode.Created, registerResponse.StatusCode);
-
+        //??ng nh?p
         var loginResponse = await _client.PostAsJsonAsync("/api/auth/login", new
         {
             Username = username,
             Password = password
         });
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
-
+        //gán token vào header
         var token = await loginResponse.Content.ReadFromJsonAsync<TokenResponseDto>();
         Assert.False(string.IsNullOrWhiteSpace(token?.AccessToken));
         Assert.False(string.IsNullOrWhiteSpace(token?.RefreshToken));
