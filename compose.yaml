@@ -1,0 +1,82 @@
+name: inventory-management
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: inventory-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Create a .env file from .env.example}
+    ports:
+      - "1433:1433"
+    volumes:
+      - inventory-sql-data:/var/opt/mssql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: inventory-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./aspnet-core
+      dockerfile: Dockerfile
+    image: inventory-api:local
+    container_name: inventory-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      #port container
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__DBConnection: Server=sqlserver,1433;Database=Inventory;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=False;TrustServerCertificate=True
+      AppSettings__Token: ${JWT_SIGNING_KEY:?Create a .env file from .env.example}
+      Redis__Configuration: redis:6379
+      Redis__InstanceName: "InventoryManagement:"
+      Cors__AllowedOrigins__0: http://localhost:4200
+    ports:
+      - "7081:8080"
+    depends_on:
+      sqlserver:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./angular/inventory
+      dockerfile: Dockerfile
+      args:
+        FRONTEND_URL: http://localhost:4200
+        API_URL: http://localhost:7081
+    image: inventory-frontend:local
+    container_name: inventory-frontend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      NG_ALLOWED_HOSTS: localhost,127.0.0.1
+    ports:
+      - "4200:4000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  inventory-sql-data:
+
+    #Docker Compose sẽ tự động:
+    #- Build image Angular và .NET từ các Dockerfile.
+    #- Tải image SQL Server và Redis nếu chưa có.
+    #- Tạo các container tương ứng.
+    #- Tạo network chung.
+    #- Gắn volume SQL Server.
+    #- Truyền biến môi trường.
+    #- Ánh xạ các cổng.
+    #- Khởi động toàn bộ hệ thống.

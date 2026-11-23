@@ -22,6 +22,10 @@ project.assets.json
 # Logs
 *.log
 
+# Local container secrets
+.env
+!.env.example
+
 # OS
 Thumbs.db
 .DS_Store
