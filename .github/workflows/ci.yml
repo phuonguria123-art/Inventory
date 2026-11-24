@@ -23,7 +23,7 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore backend
-        run: dotnet restore aspnet-core/NotFound.sln
+        run: dotnet restore aspnet-core/InventoryManagement.sln
 
       - name: Build backend
         run: dotnet build aspnet-core/InventoryManagement.sln --configuration Release --no-restore
