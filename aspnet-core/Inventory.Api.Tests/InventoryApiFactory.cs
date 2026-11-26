@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Inventory.Api.Tests;
 
@@ -20,6 +21,9 @@ public sealed class InventoryApiFactory : WebApplicationFactory<Inventory.Api.Pr
         Environment.SetEnvironmentVariable(
             "AppSettings__Token",
             "integration-test-signing-key-with-at-least-32-characters");
+        Environment.SetEnvironmentVariable(
+             "Redis__Configuration",
+            "localhost:6379,abortConnect=false");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -42,7 +46,8 @@ public sealed class InventoryApiFactory : WebApplicationFactory<Inventory.Api.Pr
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
-
+            services.RemoveAll<IDistributedCache>();
+            services.AddDistributedMemoryCache();
             using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
             scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
