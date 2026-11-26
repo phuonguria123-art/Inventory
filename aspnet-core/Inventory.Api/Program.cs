@@ -1,6 +1,8 @@
 using AutoMapper;
+using HealthChecks.UI.Client;
 using Inventory.Api.Authorization;
 using Inventory.Api.ExceptionHandlers;
+using Inventory.Application;
 using Inventory.Application.Abstraction.Caching;
 using Inventory.Application.Authorization;
 using Inventory.Application.Interfaces;
@@ -15,6 +17,7 @@ using Inventory.Application.Users.Services;
 using Inventory.Application.Warehouses;
 using Inventory.Domain.Exceptions;
 using Inventory.Domain.Interfaces;
+using Inventory.Infrastructure;
 using Inventory.Infrastructure.Authentication;
 using Inventory.Infrastructure.Caching;
 using Inventory.Infrastructure.Context;
@@ -22,6 +25,7 @@ using Inventory.Infrastructure.Repositories;
 using Inventory.Infrastructure.Repository;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -72,26 +76,6 @@ namespace Inventory.Api
                         .AllowAnyMethod();
                 });
             });
-
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("DBConnection")));
-
-            builder.Services.AddScoped<IProductService, ProductService>();
-            builder.Services.AddScoped<ISupplierService, SupplierService>();
-            builder.Services.AddScoped<IInventoryService, InventoryService>();
-            builder.Services.AddScoped<IWarehouseService, WarehouseService>();
-            builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
-            builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
-            builder.Services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
-            builder.Services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
-            builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
-            builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
-            builder.Services.AddScoped<ICacheService, DistributedCacheService>();
             builder.Services
     .AddOptions<ReservationExpirationOptions>()
     .Bind(builder.Configuration.GetSection(
@@ -148,12 +132,9 @@ namespace Inventory.Api
                     }
                 });
             });
-            //  builder.Services.AddMemoryCache();
-            builder.Services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = builder.Configuration["Redis:Configuration"];
-                options.InstanceName = builder.Configuration["Redis:InstanceName"];
-            });
+
+            builder.Services.AddInfrastructure(builder.Configuration);
+            builder.Services.AddApplication();
 
             var app = builder.Build();
 
@@ -162,6 +143,20 @@ namespace Inventory.Api
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            app.MapHealthChecks("/health", new HealthCheckOptions
+            {
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
+            //tiến trình API còn chạy.
+            app.MapHealthChecks("/health/live", new HealthCheckOptions
+            {
+                Predicate = _ => false
+            });
+            //API và các dependency đã sẵn sàng.
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions
+            {
+                Predicate = check => check.Tags.Contains("ready")
+            });
             //map exception sang JSON
             app.UseExceptionHandler();
 
